@@ -39,7 +39,9 @@ app.use(express.json());
 
 // Request logging middleware
 app.use((req, res, next) => {
-  logInfo(`${req.method} ${req.url}`);
+  if (req.url !== '/api/game/pending-questions' || req.method !== 'GET') {
+    logInfo(`${req.method} ${req.url}`);
+  }
   next();
 });
 
