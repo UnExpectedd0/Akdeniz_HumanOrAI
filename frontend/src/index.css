@@ -5,15 +5,31 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: #0f172a;
+  background-color: #030712;
   color: #f8fafc;
   min-height: 100vh;
+  /* Premium deep background with animated radial gradients */
+  background: 
+    radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(244, 63, 94, 0.1) 0%, transparent 40%),
+    #030712;
+  background-attachment: fixed;
 }
 
-/* Custom Glassmorphism utility */
+/* Enhanced Glassmorphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  background: rgba(31, 41, 55, 0.7);
 }
