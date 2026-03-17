@@ -1,0 +1,15 @@
+# Node.js
+node_modules/
+.env
+
+# Google Service Account Credentials
+google-credentials.json
+*.json
+!package.json
+!package-lock.json
+
+# Build and Temp files
+dist/
+build/
+.DS_Store
+*.log

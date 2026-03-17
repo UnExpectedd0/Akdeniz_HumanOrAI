@@ -1,32 +1,29 @@
 const { Answer, Question } = require('../models');
 const { getIo } = require('./socketService');
 
-const getAIResponse = async (questionText) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error('Missing GEMINI_API_KEY in environment');
-    return "I am an AI, but my API key is missing!";
+const { GoogleGenAI } = require('@google/genai');
+
+// Initialize the GoogleGenAI SDK. This will automatically use the 
+// GOOGLE_APPLICATION_CREDENTIALS variable we set in your .env file
+const ai = new GoogleGenAI({
+  // We use the vertexai backend since you are using a Google Cloud Service Account
+  vertexai: {
+    project: 'humanorai-490512', // Extracted from your JSON filename
+    location: 'us-central1' // Standard region for Gemini Vertex AI
   }
+});
 
+const getAIResponse = async (questionText) => {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const payload = {
-      contents: [{
-        parts: [{ text: `Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural. Question: ${questionText}` }]
-      }]
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural. Question: ${questionText}`,
     });
-
-    const data = await response.json();
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      return data.candidates[0].content.parts[0].text;
+    
+    if (response && response.text) {
+      return response.text;
     }
-    throw new Error('Invalid response from Gemini');
+    throw new Error('Invalid response from AI model');
   } catch (error) {
     console.error('AI Service Error:', error);
     return "I'm having trouble connecting to my brain right now.";
