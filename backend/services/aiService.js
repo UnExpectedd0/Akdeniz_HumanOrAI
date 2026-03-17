@@ -15,19 +15,36 @@ const ai = new GoogleGenAI({
 
 const getAIResponse = async (questionText) => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural. Question: ${questionText}`,
-    });
-    
-    if (response && response.text) {
-      return response.text;
+    // If the Google Cloud Service Account credentials exist, try Vertex AI
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural. Question: ${questionText}`,
+      });
+      
+      if (response && response.text) {
+        return response.text;
+      }
     }
-    throw new Error('Invalid response from AI model');
   } catch (error) {
-    console.error('AI Service Error:', error);
-    return "I'm having trouble connecting to my brain right now.";
+    console.error('Vertex AI Service Error (falling back to mock data):', error.message);
   }
+
+  // FALLBACK FOR FRIENDS TESTING WITHOUT ACCOUNTS:
+  // Give a slightly robotic, simulated response so the game still works!
+  console.log("Using Mock AI Fallback!");
+  const mockResponses = [
+    "As an AI, based on my knowledge base, the answer to your query is quite straightforward. However, consulting a professional is always recommended.",
+    "A fascinating question! I have analyzed thousands of similar cases and the consensus points towards this being a common occurrence.",
+    "Beep boop- just kidding! Here's the information you requested. Let me know if you need anything else.",
+    "That is an interesting topic. Research indicates that the primary factor here is mostly related to standard environmental variables.",
+    "I'm sorry, but I cannot provide a definitive medical diagnosis. However, logically speaking, those symptoms often correlate with mild fatigue."
+  ];
+  
+  // Wait 1.5 seconds to simulate "thinking" time
+  await new Promise(r => setTimeout(r, 1500));
+  
+  return mockResponses[Math.floor(Math.random() * mockResponses.length)];
 };
 
 const handleAIQuestion = async (questionId, questionText, userId) => {
