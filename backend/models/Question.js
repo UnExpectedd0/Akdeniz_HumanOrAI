@@ -15,6 +15,10 @@ const Question = sequelize.define('Question', {
     type: DataTypes.ENUM('pending_ai', 'pending_doctor', 'answered'),
     allowNull: false,
   },
+  group_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  }
 });
 
 module.exports = Question;

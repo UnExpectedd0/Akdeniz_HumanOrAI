@@ -9,7 +9,8 @@ export default function AskQuestion() {
   const [pending, setPending] = useState(false);
   const [answerData, setAnswerData] = useState(null);
   const [guessResult, setGuessResult] = useState(null);
-  
+  const [errorMsg, setErrorMsg] = useState('');
+
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
@@ -18,7 +19,8 @@ export default function AskQuestion() {
     const socket = io('http://localhost:5000');
     
     socket.on('connect', () => {
-      socket.emit('join', { userId: user.id, role: user.role });
+      // Pass groupId to join room correctly
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
     });
 
     socket.on('question_answered', (data) => {
@@ -30,10 +32,11 @@ export default function AskQuestion() {
   }, [user]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!question.trim()) return;
 
     setIsAsking(true);
+    setErrorMsg('');
     try {
       await api.post('/game/ask', { text: question });
       setPending(true);
@@ -41,7 +44,7 @@ export default function AskQuestion() {
       setAnswerData(null);
       setGuessResult(null);
     } catch (err) {
-      console.error(err);
+      setErrorMsg(err.response?.data?.error || 'An error occurred');
     } finally {
       setIsAsking(false);
     }
@@ -76,13 +79,23 @@ export default function AskQuestion() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
           
           <div className="relative z-10">
+            {errorMsg && (
+              <div className="mb-4 text-red-400 bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center">
+                {errorMsg}
+              </div>
+            )}
+            
             <textarea
               required
               className="w-full h-40 bg-dark/60 border border-glassBorder rounded-2xl p-6 text-white text-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all resize-none placeholder-gray-600 shadow-inner"
               placeholder="Ask anything... e.g. Why is the sky blue? Is React better than Vue? How to cure a headache?"
               value={question}
-              onChange={(e) => setQuestion(e.target.value)}
+              onChange={(e) => {
+                setQuestion(e.target.value);
+                setErrorMsg('');
+              }}
             />
+
             <div className="flex justify-end mt-6">
               <button
                 type="submit"

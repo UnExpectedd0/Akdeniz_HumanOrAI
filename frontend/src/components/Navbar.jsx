@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, XCircle } from 'lucide-react';
+import api from '../services/api';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -10,6 +11,20 @@ export default function Navbar() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/auth');
+  };
+
+  const handleLeaveGroup = async () => {
+    try {
+      if (user.groupCode || user.group_id) {
+        await api.post('/auth/leave-group');
+        user.group_id = null;
+        user.groupCode = null;
+        localStorage.setItem('user', JSON.stringify(user));
+        navigate('/auth'); // Will drop them into the "Join/Create Group" UI based on the new auth flow
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -24,6 +39,9 @@ export default function Navbar() {
         {user && (
           <div className="flex items-center gap-8">
             <div className="flex gap-6 text-sm font-medium">
+              <Link to="/about" className="text-gray-400 hover:text-white transition-colors">
+                About
+              </Link>
               <Link to="/scoreboard" className="text-gray-400 hover:text-white transition-colors">
                 Scoreboard
               </Link>
@@ -41,13 +59,22 @@ export default function Navbar() {
 
             <div className="flex items-center gap-4 pl-6 border-l border-glassBorder">
               <div className="flex items-center gap-2 text-sm text-gray-300">
+                {user.group_id && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-dark/80 text-xs text-gray-400 font-mono tracking-wider border border-glassBorder mr-2">
+                    <span>CODE: <span className="text-white font-bold">{user.groupCode || 'ACTIVE'}</span></span>
+                    <button 
+                      onClick={handleLeaveGroup}
+                      className="ml-2 text-red-400/70 hover:text-red-400 hover:bg-red-400/20 rounded p-1 transition-all"
+                      title="Leave Group"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  </div>
+                )}
                 <div className="p-1.5 rounded-full bg-glass border border-glassBorder">
                   <UserIcon size={14} className="text-primary" />
                 </div>
                 <span>{user.username}</span>
-                <span className="px-2 py-0.5 rounded-full bg-glass text-xs text-yellow-500 font-bold border border-yellow-500/20">
-                  ★ {user.score || 0}
-                </span>
               </div>
               <button 
                 onClick={handleLogout} 

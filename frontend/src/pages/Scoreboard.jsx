@@ -31,7 +31,7 @@ export default function Scoreboard() {
     <div className="max-w-4xl mx-auto animate-fade-in-up">
       <div className="text-center mb-10">
         <h2 className="text-5xl font-black mb-2 tracking-tight drop-shadow-md text-white">
-          Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Scoreboard</span>
+          Session <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Scoreboard</span>
         </h2>
         <p className="text-gray-400 font-light text-lg">The sharpest minds, human or artificial.</p>
       </div>

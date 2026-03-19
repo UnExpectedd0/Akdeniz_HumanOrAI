@@ -19,7 +19,7 @@ export default function DoctorPanel() {
     const socket = io('http://localhost:5000');
     
     socket.on('connect', () => {
-      socket.emit('join', { userId: user.id, role: user.role });
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
     });
 
     socket.on('new_question', (question) => {
