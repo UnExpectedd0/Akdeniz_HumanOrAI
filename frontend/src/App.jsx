@@ -4,6 +4,7 @@ import AskQuestion from './pages/AskQuestion';
 import DoctorPanel from './pages/DoctorPanel';
 import Scoreboard from './pages/Scoreboard';
 import Navbar from './components/Navbar';
+import About from './pages/About';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <main className="flex-grow container mx-auto px-4 py-8">
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/about" element={<About />} />
             <Route path="/ask" element={<AskQuestion />} />
             <Route path="/doctor" element={<DoctorPanel />} />
             <Route path="/scoreboard" element={<Scoreboard />} />

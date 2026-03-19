@@ -55,7 +55,7 @@ initSocket(server);
 // Start server
 const PORT = process.env.PORT || 5000;
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync().then(() => {
   logInfo('Database synced successfully');
   server.listen(PORT, () => logInfo(`Server running on port ${PORT}`));
 }).catch(err => logError('DB Connect Error:', err));

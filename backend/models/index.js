@@ -1,8 +1,17 @@
 const sequelize = require('../config/database');
+const Group = require('./Group');
 const User = require('./User');
 const Question = require('./Question');
 const Answer = require('./Answer');
 const Guess = require('./Guess');
+
+// Group <-> User
+Group.hasMany(User, { foreignKey: 'group_id', as: 'users' });
+User.belongsTo(Group, { foreignKey: 'group_id', as: 'group' });
+
+// Group <-> Question
+Group.hasMany(Question, { foreignKey: 'group_id', as: 'questions' });
+Question.belongsTo(Group, { foreignKey: 'group_id', as: 'group' });
 
 // User <-> Question
 User.hasMany(Question, { foreignKey: 'user_id', as: 'questions' });
@@ -26,6 +35,7 @@ Guess.belongsTo(Answer, { foreignKey: 'answer_id', as: 'answer' });
 
 module.exports = {
   sequelize,
+  Group,
   User,
   Question,
   Answer,

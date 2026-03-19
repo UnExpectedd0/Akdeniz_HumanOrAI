@@ -14,7 +14,7 @@ const User = sequelize.define('User', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true, // Made optional for guest users
   },
   role: {
     type: DataTypes.ENUM('user', 'doctor', 'ai'),
@@ -25,6 +25,10 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
   },
+  group_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // Guests who haven't joined a group
+  }
 });
 
 module.exports = User;

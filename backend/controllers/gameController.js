@@ -1,30 +1,57 @@
 const { Question, Answer, Guess, User } = require('../models');
-const { handleAIQuestion } = require('../services/aiService');
+const { handleAIQuestion, isAiRateLimited, recordAiRequest } = require('../services/aiService');
 const { getIo } = require('../services/socketService');
 
 exports.askQuestion = async (req, res) => {
   try {
     const { text } = req.body;
     const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    const groupId = user.group_id;
 
-    // 50% chance for AI vs Doctor
-    const isAiAssigned = Math.random() < 0.5;
+    if (!groupId) {
+      return res.status(400).json({ error: 'You must join a group first' });
+    }
+
+    // Check if there's any doctor in this group
+    const doctorCount = await User.count({ where: { group_id: groupId, role: 'doctor' } });
+
+    if (doctorCount === 0) {
+      return res.status(400).json({ error: 'There must be at least 1 doctor in the group' });
+    }
+
+    // AI Limit Check
+    const aiLimited = isAiRateLimited();
+
+    let isAiAssigned = false;
+
+    if (aiLimited) {
+      isAiAssigned = false; // Force strictly to doctor
+    } else {
+      isAiAssigned = Math.random() < 0.5; // Random choice
+    }
+
+    if (isAiAssigned) {
+      recordAiRequest();
+    }
+
     const status = isAiAssigned ? 'pending_ai' : 'pending_doctor';
 
     const question = await Question.create({
       text,
       user_id: userId,
-      status
+      status,
+      group_id: groupId
     });
 
     if (isAiAssigned) {
       // Background AI handling
       handleAIQuestion(question.id, text, userId);
     } else {
-      // Emit to doctors
+      // Emit to doctors in this specific group
       const io = getIo();
       if (io) {
-        io.to('doctors').emit('new_question', question);
+        io.to(`doctors_${groupId}`).emit('new_question', question);
       }
     }
 
@@ -37,8 +64,12 @@ exports.askQuestion = async (req, res) => {
 
 exports.getPendingQuestionsForDoctors = async (req, res) => {
   try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    const groupId = user.group_id;
+
     const questions = await Question.findAll({
-      where: { status: 'pending_doctor' },
+      where: { status: 'pending_doctor', group_id: groupId },
       include: [{ model: User, as: 'author', attributes: ['username'] }]
     });
     res.json(questions);
@@ -51,10 +82,11 @@ exports.doctorAnswer = async (req, res) => {
   try {
     const { questionId, text } = req.body;
     const doctorId = req.user.id;
+    const docUser = await User.findByPk(doctorId);
 
-    const question = await Question.findOne({ where: { id: questionId, status: 'pending_doctor' } });
+    const question = await Question.findOne({ where: { id: questionId, status: 'pending_doctor', group_id: docUser.group_id } });
     if (!question) {
-      return res.status(404).json({ error: 'Question not found or already answered' });
+      return res.status(404).json({ error: 'Question not found, not in your group, or already answered' });
     }
 
     const answer = await Answer.create({
@@ -75,8 +107,8 @@ exports.doctorAnswer = async (req, res) => {
         answerId: answer.id,
         text
       });
-      // Notify other doctors that it's answered so it removes from their list
-      io.to('doctors').emit('question_removed', { questionId: question.id });
+      // Notify other doctors in the group that it's answered
+      io.to(`doctors_${docUser.group_id}`).emit('question_removed', { questionId: question.id });
     }
 
     res.json({ message: 'Answer submitted', answer });
@@ -118,16 +150,16 @@ exports.submitGuess = async (req, res) => {
     // Scoring logic
     const user = await User.findByPk(userId);
     if (isCorrect) {
-      user.score += 1; // User gains 1 point
+      user.score += 1;
       if (!answer.is_ai && answer.answerer_id) {
         const doc = await User.findByPk(answer.answerer_id);
-        doc.score -= 1; // Doctor loses 1 point if guessed correctly (meaning they failed to fool the user into thinking they were AI, or vice versa)
+        doc.score -= 1;
         await doc.save();
       }
     } else {
       if (!answer.is_ai && answer.answerer_id) {
         const doc = await User.findByPk(answer.answerer_id);
-        doc.score += 1; // Doctor fooled user! Gains 1 point.
+        doc.score += 1;
         await doc.save();
       }
     }
@@ -142,7 +174,16 @@ exports.submitGuess = async (req, res) => {
 
 exports.getScoreboard = async (req, res) => {
   try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    const groupId = user.group_id;
+
+    if (!groupId) {
+      return res.json([]);
+    }
+
     const users = await User.findAll({
+      where: { group_id: groupId },
       attributes: ['id', 'username', 'role', 'score'],
       order: [['score', 'DESC']]
     });

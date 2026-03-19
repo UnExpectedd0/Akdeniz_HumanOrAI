@@ -15,9 +15,12 @@ const initSocket = (server) => {
 
     // Clients can join rooms based on their roles
     socket.on('join', (data) => {
-      if (data.role === 'doctor') {
-        socket.join('doctors');
-        console.log(`Socket ${socket.id} joined doctors room`);
+      if (data.role === 'doctor' && data.groupId) {
+        socket.join(`doctors_${data.groupId}`);
+        console.log(`Socket ${socket.id} joined doctors_${data.groupId} room`);
+      } else if (data.role === 'doctor') {
+        // Fallback or unassigned doctor? Should shouldn't happen with new logic
+        socket.join('doctors'); 
       }
       if (data.userId) {
         // Create a personal room for the user to receive targeted updates
