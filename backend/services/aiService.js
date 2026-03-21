@@ -1,9 +1,12 @@
-const { Answer, Question } = require('../models');
+const { Answer, Question, Prompt } = require('../models');
 const { getIo } = require('./socketService');
 const { GoogleGenAI } = require('@google/genai');
 
 const requestTimestamps = [];
 const AI_RPM_LIMIT = 14; // Safely below 15 to prevent accidental 429 errors
+
+const DEFAULT_PROMPT =
+  'Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural.';
 
 const isAiRateLimited = () => {
   const now = Date.now();
@@ -18,8 +21,21 @@ const recordAiRequest = () => {
   requestTimestamps.push(Date.now());
 };
 
+const getLayoutPrompt = async () => {
+  try {
+    const row = await Prompt.findOne({ where: { name: 'layout_prompt' } });
+    if (row && row.content) return row.content;
+  } catch (err) {
+    console.error('Could not load layout prompt from DB, using default:', err.message);
+  }
+  return DEFAULT_PROMPT;
+};
+
 const getAIResponse = async (questionText) => {
   try {
+    const layoutPrompt = await getLayoutPrompt();
+    const fullPrompt = `${layoutPrompt} Question: ${questionText}`;
+
     let ai;
     let modelName = 'gemini-2.5-flash';
 
@@ -36,7 +52,7 @@ const getAIResponse = async (questionText) => {
     if (ai) {
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: `Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural. Question: ${questionText}`,
+        contents: fullPrompt,
       });
       
       if (response && response.text) {
@@ -63,6 +79,7 @@ const getAIResponse = async (questionText) => {
   
   return mockResponses[Math.floor(Math.random() * mockResponses.length)];
 };
+
 
 const handleAIQuestion = async (questionId, questionText, userId) => {
   try {
@@ -92,4 +109,4 @@ const handleAIQuestion = async (questionId, questionText, userId) => {
   }
 };
 
-module.exports = { handleAIQuestion, isAiRateLimited, recordAiRequest };
+module.exports = { handleAIQuestion, getAIResponse, isAiRateLimited, recordAiRequest };

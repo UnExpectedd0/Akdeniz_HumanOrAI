@@ -5,6 +5,12 @@ const { getIo } = require('../services/socketService');
 exports.askQuestion = async (req, res) => {
   try {
     const { text } = req.body;
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Question text is required' });
+    }
+    if (text.trim().length > 500) {
+      return res.status(400).json({ error: 'Question must be 500 characters or fewer' });
+    }
     const userId = req.user.id;
     const user = await User.findByPk(userId);
     const groupId = user.group_id;
@@ -81,6 +87,12 @@ exports.getPendingQuestionsForDoctors = async (req, res) => {
 exports.doctorAnswer = async (req, res) => {
   try {
     const { questionId, text } = req.body;
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Answer text is required' });
+    }
+    if (text.trim().length > 2000) {
+      return res.status(400).json({ error: 'Answer must be 2000 characters or fewer' });
+    }
     const doctorId = req.user.id;
     const docUser = await User.findByPk(doctorId);
 

@@ -5,7 +5,9 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const { sequelize } = require('./models');
+const { sequelize, Prompt } = require('./models');
+
+const DEFAULT_LAYOUT_PROMPT = 'Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural.';
 const { initSocket } = require('./services/socketService');
 
 // App & Server
@@ -34,8 +36,9 @@ const logError = (message, err) => {
 };
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: allowedOrigin, credentials: true }));
+app.use(express.json({ limit: '10kb' })); // Prevent large payload attacks
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -48,14 +51,28 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/game', require('./routes/game'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Init Socket.io
-initSocket(server);
+initSocket(server, allowedOrigin);
 
 // Start server
 const PORT = process.env.PORT || 5000;
 
-sequelize.sync().then(() => {
+sequelize.sync().then(async () => {
   logInfo('Database synced successfully');
+
+  // Seed default layout prompt if it doesn't exist yet
+  const existing = await Prompt.findOne({ where: { name: 'layout_prompt' } });
+  if (!existing) {
+    await Prompt.create({
+      name: 'layout_prompt',
+      content: DEFAULT_LAYOUT_PROMPT,
+      updated_by: 'system',
+    });
+    logInfo('Default layout prompt seeded into database.');
+  }
+
   server.listen(PORT, () => logInfo(`Server running on port ${PORT}`));
 }).catch(err => logError('DB Connect Error:', err));
+

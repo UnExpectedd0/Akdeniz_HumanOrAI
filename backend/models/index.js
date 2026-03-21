@@ -4,6 +4,7 @@ const User = require('./User');
 const Question = require('./Question');
 const Answer = require('./Answer');
 const Guess = require('./Guess');
+const Prompt = require('./Prompt');
 
 // Group <-> User
 Group.hasMany(User, { foreignKey: 'group_id', as: 'users' });
@@ -40,4 +41,5 @@ module.exports = {
   Question,
   Answer,
   Guess,
+  Prompt,
 };

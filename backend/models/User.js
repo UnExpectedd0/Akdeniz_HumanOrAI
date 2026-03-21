@@ -17,7 +17,7 @@ const User = sequelize.define('User', {
     allowNull: true, // Made optional for guest users
   },
   role: {
-    type: DataTypes.ENUM('user', 'doctor', 'ai'),
+    type: DataTypes.ENUM('user', 'doctor', 'admin'),
     allowNull: false,
     defaultValue: 'user',
   },

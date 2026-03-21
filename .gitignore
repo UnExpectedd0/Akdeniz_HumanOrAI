@@ -13,3 +13,9 @@ dist/
 build/
 .DS_Store
 *.log
+
+# Database (contains real user data - never commit this)
+backend/database.sqlite
+
+# Server logs
+backend/logs/
