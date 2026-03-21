@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { BrainCircuit, User } from 'lucide-react';
 
@@ -12,17 +11,19 @@ export default function Auth() {
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
-  // If already logged in and has group, redirect
+  // If already logged in, redirect appropriately
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (user && user.group_id) {
-      navigate(user.role === 'doctor' ? '/doctor' : '/ask');
-    } else if (user && !user.group_id) {
+    if (!user) return;
+    if (user.role === 'admin') {
+      window.location.href = '/admin/prompt';
+    } else if (user.group_id) {
+      window.location.href = user.role === 'doctor' ? '/doctor' : '/ask';
+    } else {
       setIsGroupStage(true);
     }
-  }, [navigate]);
+  }, []);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +36,7 @@ export default function Auth() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         if (data.user.group_id) {
-          navigate('/ask');
+          window.location.href = '/ask';
         } else {
           setIsGroupStage(true);
         }
@@ -46,8 +47,10 @@ export default function Auth() {
         });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        if (data.user.group_id) {
-          navigate(data.user.role === 'doctor' ? '/doctor' : '/ask');
+        if (data.user.role === 'admin') {
+          window.location.href = '/admin/prompt';
+        } else if (data.user.group_id) {
+          window.location.href = data.user.role === 'doctor' ? '/doctor' : '/ask';
         } else {
           setIsGroupStage(true);
         }
@@ -69,10 +72,10 @@ export default function Auth() {
     try {
       const { data } = await api.post('/auth/create-group');
       const user = JSON.parse(localStorage.getItem('user'));
-      user.group_id = data.groupCode; // Store code abstractly or rely on backend
+      user.group_id = data.groupCode;
       user.groupCode = data.groupCode;
       localStorage.setItem('user', JSON.stringify(user));
-      navigate(user.role === 'doctor' ? '/doctor' : '/ask');
+      window.location.href = user.role === 'doctor' ? '/doctor' : '/ask';
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create group');
     } finally {
@@ -87,10 +90,10 @@ export default function Auth() {
     try {
       const { data } = await api.post('/auth/join-group', { code: groupCodeInput });
       const user = JSON.parse(localStorage.getItem('user'));
-      user.group_id = data.groupCode; // Backend set group.id, but let's store groupCode for UI
+      user.group_id = data.groupCode;
       user.groupCode = data.groupCode;
       localStorage.setItem('user', JSON.stringify(user));
-      navigate(user.role === 'doctor' ? '/doctor' : '/ask');
+      window.location.href = user.role === 'doctor' ? '/doctor' : '/ask';
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to join group');
     } finally {

@@ -60,6 +60,8 @@ export default function AskQuestion() {
       const updatedUser = { ...user, score: data.newScore };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('storage'));
+      // Reload after 2s so user can read the result, then gets fresh data
+      setTimeout(() => window.location.reload(), 2000);
     } catch (err) {
       console.error(err);
     }
@@ -196,10 +198,7 @@ export default function AskQuestion() {
 
           <div className="pt-10">
             <button
-              onClick={() => {
-                setAnswerData(null);
-                setGuessResult(null);
-              }}
+              onClick={() => window.location.reload()}
               className="bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-10 rounded-xl transition-all border border-glassBorder hover:border-white/40 hover:scale-105"
             >
               Ask Another Question

@@ -9,6 +9,14 @@ const DOCTOR_SECRET = process.env.DOCTOR_SECRET || 'MEDIC2026'; // Default secre
 exports.register = async (req, res) => {
   try {
     const { username, password, secretKey } = req.body;
+
+    // Validate username
+    if (!username || typeof username !== 'string' || username.trim().length < 3 || username.trim().length > 30) {
+      return res.status(400).json({ error: 'Username must be between 3 and 30 characters' });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+    }
     
     // Only allow signups if they know the secret key
     if (secretKey !== DOCTOR_SECRET) {
@@ -56,7 +64,12 @@ exports.login = async (req, res) => {
 exports.guestLogin = async (req, res) => {
   try {
     const { username } = req.body;
-    if (!username) return res.status(400).json({ error: 'Username is required' });
+    if (!username || typeof username !== 'string' || username.trim().length < 3 || username.trim().length > 30) {
+      return res.status(400).json({ error: 'Username must be between 3 and 30 characters' });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+    }
 
     let user = await User.findOne({ where: { username } });
     if (user && user.role === 'doctor') {

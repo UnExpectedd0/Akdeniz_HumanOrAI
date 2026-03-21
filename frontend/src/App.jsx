@@ -5,6 +5,8 @@ import DoctorPanel from './pages/DoctorPanel';
 import Scoreboard from './pages/Scoreboard';
 import Navbar from './components/Navbar';
 import About from './pages/About';
+import AdminPrompt from './pages/AdminPrompt';
+import AdminLogin from './pages/AdminLogin';
 
 function App() {
   return (
@@ -18,6 +20,9 @@ function App() {
             <Route path="/ask" element={<AskQuestion />} />
             <Route path="/doctor" element={<DoctorPanel />} />
             <Route path="/scoreboard" element={<Scoreboard />} />
+            <Route path="/admin/prompt" element={<AdminPrompt />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<Navigate to="/admin/login" />} />
             <Route path="/" element={<Navigate to="/auth" />} />
           </Routes>
         </main>

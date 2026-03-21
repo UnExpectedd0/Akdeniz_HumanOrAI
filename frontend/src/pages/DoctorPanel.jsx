@@ -55,9 +55,7 @@ export default function DoctorPanel() {
         questionId: selectedQuestion.id,
         text: answerText
       });
-      setQuestions((prev) => prev.filter(q => q.id !== selectedQuestion.id));
-      setSelectedQuestion(null);
-      setAnswerText('');
+      window.location.reload();
     } catch (err) {
       console.error(err);
     } finally {

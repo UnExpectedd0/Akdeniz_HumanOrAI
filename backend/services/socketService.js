@@ -2,11 +2,12 @@ const { Server } = require('socket.io');
 
 let io;
 
-const initSocket = (server) => {
+const initSocket = (server, allowedOrigin) => {
   io = new Server(server, {
     cors: {
-      origin: '*', // For dev
-      methods: ['GET', 'POST']
+      origin: allowedOrigin || 'http://localhost:5173',
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
 
