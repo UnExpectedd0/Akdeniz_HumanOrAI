@@ -1,6 +1,7 @@
 const { Answer, Question, Prompt } = require('../models');
 const { getIo } = require('./socketService');
 const { GoogleGenAI } = require('@google/genai');
+const logger = require('./logger');
 
 const requestTimestamps = [];
 const AI_RPM_LIMIT = 14; // Safely below 15 to prevent accidental 429 errors
@@ -26,7 +27,7 @@ const getLayoutPrompt = async () => {
     const row = await Prompt.findOne({ where: { name: 'layout_prompt' } });
     if (row && row.content) return row.content;
   } catch (err) {
-    console.error('Could not load layout prompt from DB, using default:', err.message);
+    logger.error('Could not load layout prompt from DB, using default:', err);
   }
   return DEFAULT_PROMPT;
 };
@@ -60,12 +61,12 @@ const getAIResponse = async (questionText) => {
       }
     }
   } catch (error) {
-    console.error('AI Service Error (falling back to mock data):', error.message);
+    logger.error('AI Service Error (falling back to mock data):', error);
   }
 
   // FALLBACK FOR FRIENDS TESTING WITHOUT ACCOUNTS:
   // Give a slightly robotic, simulated response so the game still works!
-  console.log("Using Mock AI Fallback!");
+  logger.warn("Using Mock AI Fallback!");
   const mockResponses = [
     "[MOCK FALLBACK] As an AI, based on my knowledge base, the answer to your query is quite straightforward. However, consulting a professional is always recommended.",
     "[MOCK FALLBACK] A fascinating question! I have analyzed thousands of similar cases and the consensus points towards this being a common occurrence.",
@@ -105,7 +106,7 @@ const handleAIQuestion = async (questionId, questionText, userId) => {
       });
     }
   } catch(err) {
-    console.error('Error handling AI question', err);
+    logger.error('Error handling AI question', err);
   }
 };
 

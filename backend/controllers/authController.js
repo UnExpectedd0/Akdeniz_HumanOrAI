@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Group } = require('../models');
+const { User, Group, Question } = require('../models');
+const { getIo } = require('../services/socketService');
+const logger = require('../services/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret123';
 
@@ -49,6 +51,8 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign({ id: user.id, role: user.role, username: user.username, group_id: user.group_id }, JWT_SECRET, { expiresIn: '1d' });
 
+    logger.milestone(`Doctor Login: ${user.username}`);
+
     let groupCode = null;
     if (user.group_id) {
       const group = await Group.findByPk(user.group_id);
@@ -82,6 +86,8 @@ exports.guestLogin = async (req, res) => {
 
     const token = jwt.sign({ id: user.id, role: user.role, username: user.username, group_id: user.group_id }, JWT_SECRET, { expiresIn: '1d' });
 
+    logger.milestone(`Guest Login: ${user.username}`);
+
     let groupCode = null;
     if (user.group_id) {
       const group = await Group.findByPk(user.group_id);
@@ -90,7 +96,7 @@ exports.guestLogin = async (req, res) => {
 
     res.json({ token, user: { id: user.id, username: user.username, role: user.role, score: user.score, group_id: user.group_id, groupCode } });
   } catch (error) {
-    console.error(error);
+    logger.error('GuestLogin Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -117,9 +123,11 @@ exports.createGroup = async (req, res) => {
     // Reset score to 0 and Update user group_id
     await User.update({ group_id: group.id, score: 0 }, { where: { id: userId } });
 
-    res.status(201).json({ message: 'Group created', groupCode: group.code });
+    logger.milestone(`Group Created: ${group.code} (by ${req.user.username})`);
+
+    res.status(201).json({ message: 'Group created', groupCode: group.code, groupId: group.id });
   } catch (error) {
-    console.error(error);
+    logger.error('CreateGroup Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -137,9 +145,18 @@ exports.joinGroup = async (req, res) => {
     // Reset score to 0 for the new session
     await User.update({ group_id: group.id, score: 0 }, { where: { id: userId } });
 
-    res.json({ message: 'Joined group successfully', groupCode: group.code });
+    logger.milestone(`User '${req.user.username}' joined Group: ${group.code}`);
+
+    const io = getIo();
+    if (io) {
+      io.to(`group_${group.id}`).emit('group_updated');
+      // Also emit to doctors room just in case
+      io.to(`doctors_${group.id}`).emit('group_updated');
+    }
+
+    res.json({ message: 'Joined group successfully', groupCode: group.code, groupId: group.id });
   } catch (error) {
-    console.error(error);
+    logger.error('JoinGroup Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -147,10 +164,31 @@ exports.joinGroup = async (req, res) => {
 exports.leaveGroup = async (req, res) => {
   try {
     const userId = req.user.id;
-    await User.update({ group_id: null }, { where: { id: userId } });
+    const user = await User.findByPk(userId);
+    const groupId = user?.group_id;
+
+    if (groupId) {
+      const groupObj = await Group.findByPk(groupId);
+
+      await Question.destroy({
+        where: { user_id: userId, status: ['pending_doctor', 'pending_ai'] }
+      });
+      await User.update({ group_id: null }, { where: { id: userId } });
+
+      logger.milestone(`User '${user.username}' left Group: ${groupObj?.code || groupId}`);
+
+      const io = getIo();
+      if (io) {
+        io.to(`group_${groupId}`).emit('group_updated');
+        io.to(`doctors_${groupId}`).emit('group_updated');
+      }
+    } else {
+      await User.update({ group_id: null }, { where: { id: userId } });
+    }
+
     res.json({ message: 'Left group successfully' });
   } catch (error) {
-    console.error(error);
+    logger.error('LeaveGroup Error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

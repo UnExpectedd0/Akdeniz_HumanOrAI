@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import socket from '../services/socket';
 import api from '../services/api';
 import { Send, CheckCircle, XCircle, BrainCircuit, User } from 'lucide-react';
 
@@ -11,25 +11,36 @@ export default function AskQuestion() {
   const [guessResult, setGuessResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
   useEffect(() => {
     if (!user) return;
+    if (!user.group_id) {
+      window.location.href = '/group';
+      return;
+    }
 
-    const socket = io('http://localhost:5000');
-    
-    socket.on('connect', () => {
-      // Pass groupId to join room correctly
+    if (socket.connected) {
       socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
-    });
+    }
 
-    socket.on('question_answered', (data) => {
+    const onConnect = () => {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    };
+
+    const onQuestionAnswered = (data) => {
       setAnswerData(data);
       setPending(false);
-    });
+    };
 
-    return () => socket.disconnect();
-  }, [user]);
+    socket.on('connect', onConnect);
+    socket.on('question_answered', onQuestionAnswered);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('question_answered', onQuestionAnswered);
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -44,7 +55,7 @@ export default function AskQuestion() {
       setAnswerData(null);
       setGuessResult(null);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || 'An error occurred');
+      setErrorMsg(err.response?.data?.error || err.message || 'An error occurred. Please check your connection.');
     } finally {
       setIsAsking(false);
     }
@@ -58,7 +69,7 @@ export default function AskQuestion() {
       });
       setGuessResult(data);
       const updatedUser = { ...user, score: data.newScore };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('storage'));
       // Reload after 2s so user can read the result, then gets fresh data
       setTimeout(() => window.location.reload(), 2000);

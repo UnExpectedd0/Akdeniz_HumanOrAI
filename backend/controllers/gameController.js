@@ -1,6 +1,7 @@
 const { Question, Answer, Guess, User } = require('../models');
 const { handleAIQuestion, isAiRateLimited, recordAiRequest } = require('../services/aiService');
 const { getIo } = require('../services/socketService');
+const logger = require('../services/logger');
 
 exports.askQuestion = async (req, res) => {
   try {
@@ -53,17 +54,19 @@ exports.askQuestion = async (req, res) => {
     if (isAiAssigned) {
       // Background AI handling
       handleAIQuestion(question.id, text, userId);
+      logger.milestone(`Question by '${user.username}' -> Assigned to: AI`);
     } else {
       // Emit to doctors in this specific group
       const io = getIo();
       if (io) {
         io.to(`doctors_${groupId}`).emit('new_question', question);
       }
+      logger.milestone(`Question by '${user.username}' -> Assigned to: Doctor`);
     }
 
     res.status(201).json({ message: 'Question submitted', question });
   } catch (err) {
-    console.error(err);
+    logger.error('AskQuestion Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -111,6 +114,8 @@ exports.doctorAnswer = async (req, res) => {
     question.status = 'answered';
     await question.save();
 
+    logger.milestone(`Doctor '${docUser.username}' answered Question ID: ${question.id}`);
+
     const io = getIo();
     if (io) {
       // Notify the specific user who asked
@@ -125,7 +130,7 @@ exports.doctorAnswer = async (req, res) => {
 
     res.json({ message: 'Answer submitted', answer });
   } catch (err) {
-    console.error(err);
+    logger.error('DoctorAnswer Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -177,9 +182,11 @@ exports.submitGuess = async (req, res) => {
     }
     await user.save();
 
+    logger.milestone(`Guess by '${user.username}' -> Result: ${isCorrect ? 'CORRECT' : 'FOOLED'} (Actual: ${answer.is_ai ? 'AI' : 'Human'})`);
+
     res.json({ message: 'Guess recorded', correct: isCorrect, newScore: user.score, actual_was_ai: answer.is_ai });
   } catch (err) {
-    console.error(err);
+    logger.error('SubmitGuess Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

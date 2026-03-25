@@ -1,14 +1,58 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LogOut, User as UserIcon, XCircle, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
+import socket from '../services/socket';
 
 export default function Navbar() {
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const [playerCount, setPlayerCount] = useState(0);
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  useEffect(() => {
+    if (!user || !user.group_id) return;
+
+    const fetchCount = async () => {
+      try {
+        const { data } = await api.get('/game/scoreboard');
+        setPlayerCount(data.length);
+      } catch (err) {
+        console.error('Error fetching player count:', err);
+      }
+    };
+
+    fetchCount();
+
+    if (socket.connected) {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    }
+
+    const onConnect = () => {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    };
+
+    const onGroupUpdated = () => {
+      fetchCount();
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('group_updated', onGroupUpdated);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('group_updated', onGroupUpdated);
+    };
+  }, [user?.group_id]);
+
+  const handleLogout = async () => {
+    try {
+      if (user?.groupCode || user?.group_id) {
+        await api.post('/auth/leave-group');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     window.location.href = '/auth';
   };
 
@@ -18,7 +62,7 @@ export default function Navbar() {
         await api.post('/auth/leave-group');
         user.group_id = null;
         user.groupCode = null;
-        localStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('user', JSON.stringify(user));
         window.location.href = '/auth';
       }
     } catch (err) {
@@ -43,8 +87,14 @@ export default function Navbar() {
             </Link>
             {user && (
               <>
-                <Link to="/scoreboard" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/scoreboard" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
                   Scoreboard
+                  {user.group_id && playerCount > 0 && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-[10px] text-green-400 font-bold uppercase tracking-tighter animate-fade-in">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-[pulse_2s_ease-in-out_infinite]"></span>
+                      {playerCount}
+                    </span>
+                  )}
                 </Link>
                 {user.role === 'doctor' && (
                   <Link to="/doctor" className="text-secondary hover:text-white transition-colors">

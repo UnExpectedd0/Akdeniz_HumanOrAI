@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import socket from '../services/socket';
 import api from '../services/api';
 import { Send, Clock, Activity, AlertCircle } from 'lucide-react';
 
@@ -9,32 +9,50 @@ export default function DoctorPanel() {
   const [answerText, setAnswerText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
   useEffect(() => {
     if (!user || user.role !== 'doctor') return;
+    if (!user.group_id) {
+      window.location.href = '/group';
+      return;
+    }
 
     fetchPendingQuestions();
 
-    const socket = io('http://localhost:5000');
-    
-    socket.on('connect', () => {
+    if (socket.connected) {
       socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
-    });
+    }
 
-    socket.on('new_question', (question) => {
+    const onConnect = () => {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    };
+
+    const onNewQuestion = (question) => {
       setQuestions((prev) => [...prev, question]);
-    });
+    };
 
-    socket.on('question_removed', (data) => {
+    const onQuestionRemoved = (data) => {
       setQuestions((prev) => prev.filter(q => q.id !== data.questionId));
-      if (selectedQuestion && selectedQuestion.id === data.questionId) {
-        setSelectedQuestion(null);
-      }
-    });
+      setSelectedQuestion(prev => (prev && prev.id === data.questionId ? null : prev));
+    };
 
-    return () => socket.disconnect();
-  }, [user]);
+    const onGroupUpdated = () => {
+      fetchPendingQuestions();
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('new_question', onNewQuestion);
+    socket.on('question_removed', onQuestionRemoved);
+    socket.on('group_updated', onGroupUpdated);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('new_question', onNewQuestion);
+      socket.off('question_removed', onQuestionRemoved);
+      socket.off('group_updated', onGroupUpdated);
+    };
+  }, []);
 
   const fetchPendingQuestions = async () => {
     try {
@@ -55,7 +73,9 @@ export default function DoctorPanel() {
         questionId: selectedQuestion.id,
         text: answerText
       });
-      window.location.reload();
+      setSelectedQuestion(null);
+      setAnswerText('');
+      fetchPendingQuestions();
     } catch (err) {
       console.error(err);
     } finally {

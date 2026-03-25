@@ -11,7 +11,7 @@ export default function AdminLogin() {
 
   // If already logged in as admin, redirect immediately
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user && user.role === 'admin') {
       navigate('/admin/prompt');
     }
@@ -33,11 +33,11 @@ export default function AdminLogin() {
         return;
       }
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('user', JSON.stringify(data.user));
       navigate('/admin/prompt');
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred. Please try again.');
+      setError(err.response?.data?.error || err.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
