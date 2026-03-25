@@ -1,12 +1,44 @@
 import React, { useEffect, useState } from 'react';
+import socket from '../services/socket';
 import api from '../services/api';
 
 export default function Scoreboard() {
   const [usersData, setUsersData] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+
   useEffect(() => {
+    if (!user) {
+      window.location.href = '/auth';
+      return;
+    }
+    if (!user.group_id) {
+      window.location.href = '/group';
+      return;
+    }
+
     fetchScores();
+
+    if (socket.connected) {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    }
+
+    const onConnect = () => {
+      socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
+    };
+
+    const onGroupUpdated = () => {
+      fetchScores();
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('group_updated', onGroupUpdated);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('group_updated', onGroupUpdated);
+    };
   }, []);
 
   const fetchScores = async () => {

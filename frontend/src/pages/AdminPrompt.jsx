@@ -5,7 +5,7 @@ import api from '../services/api';
 
 export default function AdminPrompt() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
   const [content, setContent] = useState('');
   const [lastUpdatedBy, setLastUpdatedBy] = useState(null);

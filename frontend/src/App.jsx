@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
+import Group from './pages/Group';
 import AskQuestion from './pages/AskQuestion';
 import DoctorPanel from './pages/DoctorPanel';
 import Scoreboard from './pages/Scoreboard';
@@ -16,6 +17,7 @@ function App() {
         <main className="flex-grow container mx-auto px-4 py-8">
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/group" element={<Group />} />
             <Route path="/about" element={<About />} />
             <Route path="/ask" element={<AskQuestion />} />
             <Route path="/doctor" element={<DoctorPanel />} />
