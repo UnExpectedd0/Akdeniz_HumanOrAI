@@ -168,11 +168,7 @@ exports.submitGuess = async (req, res) => {
     const user = await User.findByPk(userId);
     if (isCorrect) {
       user.score += 1;
-      if (!answer.is_ai && answer.answerer_id) {
-        const doc = await User.findByPk(answer.answerer_id);
-        doc.score -= 1;
-        await doc.save();
-      }
+      // No longer deducting points from doctors when caught
     } else {
       if (!answer.is_ai && answer.answerer_id) {
         const doc = await User.findByPk(answer.answerer_id);
