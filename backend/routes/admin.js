@@ -7,5 +7,6 @@ const { authMiddleware, adminOnly } = require('../middlewares/auth');
 router.get('/prompt', authMiddleware, adminOnly, adminController.getPrompt);
 router.put('/prompt', authMiddleware, adminOnly, adminController.updatePrompt);
 router.post('/test', authMiddleware, adminOnly, adminController.testPrompt);
+router.get('/config', authMiddleware, adminOnly, adminController.getConfig);
 
 module.exports = router;
