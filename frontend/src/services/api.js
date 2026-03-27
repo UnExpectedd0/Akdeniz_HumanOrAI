@@ -1,7 +1,8 @@
 import axios from 'axios';
 
+// Uses relative path — works in both dev (Vite proxy) and production (same origin)
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: '/api',
 });
 
 api.interceptors.request.use((config) => {

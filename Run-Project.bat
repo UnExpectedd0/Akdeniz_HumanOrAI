@@ -1,18 +1,39 @@
 @echo off
 echo =========================================
-echo    Starting Akdeniz HumanOrAI Project
+echo    Starting Akdeniz HumanOrAI
 echo =========================================
 
 echo.
-echo Starting Backend server (Port 5000)...
-start "Backend Server" cmd /k "cd backend && npm run dev"
+echo [1/3] Installing backend dependencies...
+cd backend
+call npm install --production
+if %errorlevel% neq 0 (
+    echo ERROR: Backend install failed!
+    pause
+    exit /b 1
+)
 
 echo.
-echo Starting Frontend development server...
-start "Frontend Server" cmd /k "cd frontend && npm run dev"
+echo [2/3] Building frontend...
+cd ..\frontend
+call npm install
+call npm run build
+if %errorlevel% neq 0 (
+    echo ERROR: Frontend build failed!
+    pause
+    exit /b 1
+)
 
 echo.
-echo Both servers are starting! 
-echo Keep the two new CMD windows open while you are working.
+echo [3/3] Starting server...
+cd ..\backend
 echo.
+echo =========================================
+echo   Server is running on port 5000
+echo   Open http://localhost:5000 in browser
+echo.
+echo   Keep this window open!
+echo =========================================
+echo.
+node index.js
 pause

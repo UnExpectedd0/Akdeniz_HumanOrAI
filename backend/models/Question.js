@@ -12,7 +12,15 @@ const Question = sequelize.define('Question', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('pending_ai', 'pending_doctor', 'answered'),
+    type: DataTypes.ENUM('pending_ai', 'pending_doctor', 'accepted', 'answered'),
+    allowNull: false,
+  },
+  accepted_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
   group_id: {

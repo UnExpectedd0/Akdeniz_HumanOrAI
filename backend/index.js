@@ -17,17 +17,19 @@ const app = express();
 const server = http.createServer(app);
 
 // Middleware
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
-if (process.env.ALLOWED_ORIGIN) {
-  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
-}
+const PORT = process.env.PORT || 5000;
 
 app.use(cors({ 
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // 1. Allow if there's no origin (like mobile apps or curl)
+    // 2. Allow if it's from localhost/127.0.0.1
+    // 3. Allow if it's from a private local network (192.168.x.x, 10.x.x.x, 172.16.x.x) on the dev port
+    const isLocal = !origin || 
+                   origin.startsWith('http://localhost') || 
+                   origin.startsWith('http://127.0.0.1') || 
+                   /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin);
+
+    if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -56,13 +58,23 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/game', require('./routes/game'));
 app.use('/api/admin', require('./routes/admin'));
 
+// Serve frontend static build in production
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  // All non-API routes -> index.html (React Router handles client-side routing)
+  app.get('{*splat}', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+  logger.info('Serving frontend from ../frontend/dist');
+}
+
 // Init Socket.io
-initSocket(server, allowedOrigins);
+initSocket(server);
 
 // Start server
-const PORT = process.env.PORT || 5000;
 
-sequelize.sync().then(async () => {
+sequelize.sync({ alter: true }).then(async () => {
   logger.success('Database synced successfully');
 
   // Seed default layout prompt if it doesn't exist yet

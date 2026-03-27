@@ -15,6 +15,14 @@ const Answer = sequelize.define('Answer', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
   },
+  question_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  answerer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 });
 
 module.exports = Answer;

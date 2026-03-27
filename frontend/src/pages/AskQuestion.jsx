@@ -24,6 +24,27 @@ export default function AskQuestion() {
       socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
     }
 
+    const fetchActive = async () => {
+      try {
+        const { data } = await api.get('/game/active-question');
+        if (data) {
+          if (data.status === 'answered' && data.answer) {
+             setAnswerData({
+               answerId: data.answer.id,
+               text: data.answer.text
+             });
+             setPending(false);
+          } else {
+             setPending(true);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchActive();
+
     const onConnect = () => {
       socket.emit('join', { userId: user.id, role: user.role, groupId: user.group_id });
     };
@@ -33,12 +54,19 @@ export default function AskQuestion() {
       setPending(false);
     };
 
+    const onQuestionAccepted = () => {
+      // Potentially update UI to say "Doctor is typing..."
+      setPending(true);
+    };
+
     socket.on('connect', onConnect);
     socket.on('question_answered', onQuestionAnswered);
+    socket.on('question_accepted', onQuestionAccepted);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('question_answered', onQuestionAnswered);
+      socket.off('question_accepted', onQuestionAccepted);
     };
   }, []);
 
@@ -82,9 +110,9 @@ export default function AskQuestion() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-fade-in-up relative">
-      <div className="text-center space-y-3 mb-10">
-        <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md">Ask a Question</h1>
-        <p className="text-xl text-gray-400 font-light">Can you tell if an AI or a Doctor answers you?</p>
+      <div className="text-center space-y-3 mb-6 md:mb-10 px-4">
+        <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-md leading-tight">Ask a Question</h1>
+        <p className="text-sm md:text-xl text-gray-400 font-light">Can you tell if an AI or a Doctor answers you?</p>
       </div>
 
       {!pending && !answerData && !guessResult && (
@@ -130,15 +158,15 @@ export default function AskQuestion() {
               <div className="absolute inset-0 border-4 border-primary/30 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-3xl text-white font-black tracking-tight animate-pulse">Waiting for response...</h3>
-            <p className="text-gray-400 text-lg mt-2">Someone (or something) is typing...</p>
+            <h3 className="text-2xl md:text-3xl text-white font-black tracking-tight animate-pulse">Someone (or something) is typing...</h3>
+            <p className="text-gray-400 text-base md:text-lg mt-2">The session is currently processing the request. Please wait.</p>
           </div>
         </div>
       )}
 
       {answerData && !guessResult && (
         <div className="space-y-10 animate-fade-in-up">
-          <div className="glass p-10 rounded-3xl border border-glassBorder relative overflow-hidden shadow-2xl">
+          <div className="glass p-6 md:p-10 rounded-2xl md:rounded-3xl border border-glassBorder relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-purple-500 to-secondary animate-pulse-slow"></div>
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 blur-[50px] rounded-full pointer-events-none"></div>
             
@@ -149,25 +177,25 @@ export default function AskQuestion() {
             <p className="text-2xl text-white whitespace-pre-wrap leading-relaxed font-medium">"{answerData.text}"</p>
           </div>
 
-          <div className="text-center space-y-8 mt-12 bg-dark/40 p-10 rounded-3xl border border-glassBorder/50 backdrop-blur-sm">
-            <h2 className="text-3xl font-black text-white">Who wrote this answer?</h2>
-            <div className="grid grid-cols-2 gap-8 max-w-2xl mx-auto">
+          <div className="text-center space-y-6 md:space-y-8 mt-6 md:mt-12 bg-dark/40 p-6 md:p-10 rounded-2xl md:rounded-3xl border border-glassBorder/50 backdrop-blur-sm">
+            <h2 className="text-xl md:text-3xl font-black text-white">Who wrote this answer?</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 max-w-2xl mx-auto">
               <button 
                 onClick={() => handleGuess(true)}
-                className="group relative h-40 bg-dark/80 hover:bg-dark rounded-2xl border-2 border-primary/30 hover:border-primary transition-all overflow-hidden flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-[0_0_30px_rgba(14,165,233,0.3)] hover:-translate-y-2"
+                className="group relative h-32 md:h-40 bg-dark/80 hover:bg-dark rounded-xl md:rounded-2xl border-2 border-primary/30 hover:border-primary transition-all overflow-hidden flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-[0_0_30px_rgba(14,165,233,0.3)]"
               >
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-primary/0 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <BrainCircuit size={48} className="text-primary group-hover:drop-shadow-[0_0_15px_rgba(14,165,233,0.8)] transition-all" />
-                <span className="relative text-2xl font-black text-primary tracking-tight">AI Generated</span>
+                <BrainCircuit size={40} className="text-primary group-hover:drop-shadow-[0_0_15px_rgba(14,165,233,0.8)] transition-all md:scale-125" />
+                <span className="relative text-xl md:text-2xl font-black text-primary tracking-tight">AI Generated</span>
               </button>
               
               <button 
                 onClick={() => handleGuess(false)}
-                className="group relative h-40 bg-dark/80 hover:bg-dark rounded-2xl border-2 border-secondary/30 hover:border-secondary transition-all overflow-hidden flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:-translate-y-2"
+                className="group relative h-32 md:h-40 bg-dark/80 hover:bg-dark rounded-xl md:rounded-2xl border-2 border-secondary/30 hover:border-secondary transition-all overflow-hidden flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-[0_0_30px_rgba(244,63,94,0.3)]"
               >
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-secondary/0 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <User size={48} className="text-secondary group-hover:drop-shadow-[0_0_15px_rgba(244,63,94,0.8)] transition-all" />
-                <span className="relative text-2xl font-black text-secondary tracking-tight">Human Doctor</span>
+                <User size={40} className="text-secondary group-hover:drop-shadow-[0_0_15px_rgba(244,63,94,0.8)] transition-all md:scale-125" />
+                <span className="relative text-xl md:text-2xl font-black text-secondary tracking-tight">Human Doctor</span>
               </button>
             </div>
           </div>
@@ -191,11 +219,11 @@ export default function AskQuestion() {
           </div>
           
           <div className="space-y-2">
-            <h2 className={`text-5xl font-black tracking-tight ${guessResult.correct ? 'text-green-400' : 'text-red-400'}`}>
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight ${guessResult.correct ? 'text-green-400' : 'text-red-400'}`}>
               {guessResult.correct ? 'Brilliant!' : 'Fooled!'}
             </h2>
-            <p className="text-2xl text-gray-300">
-              The answer was actually written by <strong className="text-white bg-glass px-3 py-1 rounded-lg border border-glassBorder ml-1">{guessResult.actual_was_ai ? '🤖 an AI' : '👨‍⚕️ a Human'}</strong>
+            <p className="text-lg md:text-2xl text-gray-300 px-4">
+              The answer was actually written by <strong className="text-white bg-glass px-2 md:px-3 py-1 rounded-lg border border-glassBorder whitespace-nowrap">{guessResult.actual_was_ai ? '🤖 an AI' : '👨‍⚕️ a Human'}</strong>
             </p>
           </div>
           

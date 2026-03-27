@@ -109,16 +109,16 @@ export default function AdminPrompt() {
             <p className="text-xs text-gray-500">Share this code with doctors so they can register an account</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 rounded-xl border border-glassBorder bg-dark/60 px-4 py-3 font-mono text-sm tracking-wider text-gray-100 select-all">
+        <div className="flex flex-col sm:items-center sm:flex-row gap-3 mt-4">
+          <div className="flex-1 rounded-xl border border-glassBorder bg-dark/60 px-4 py-3 font-mono text-sm tracking-wider text-gray-100 select-all overflow-hidden text-ellipsis">
             {secretRevealed ? (doctorSecret ?? '…') : '••••••••••••'}
           </div>
           <button
             onClick={() => setSecretRevealed(v => !v)}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl border border-glassBorder text-gray-400 hover:text-white hover:border-gray-500 transition-all text-sm"
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-glassBorder text-gray-400 hover:text-white hover:border-gray-500 transition-all text-sm shrink-0"
           >
             {secretRevealed ? <EyeOff size={16} /> : <Eye size={16} />}
-            {secretRevealed ? 'Hide' : 'Reveal'}
+            {secretRevealed ? 'Hide Secret' : 'Reveal Secret'}
           </button>
         </div>
       </div>
@@ -166,11 +166,11 @@ export default function AdminPrompt() {
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-3 justify-end">
+        <div className="flex flex-wrap items-center gap-3 justify-end">
           <button
             onClick={fetchPrompt}
             disabled={loading || saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white border border-glassBorder hover:border-gray-500 transition-all disabled:opacity-40"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white border border-glassBorder hover:border-gray-500 transition-all disabled:opacity-40"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Reset
@@ -178,10 +178,10 @@ export default function AdminPrompt() {
           <button
             onClick={handleSave}
             disabled={saving || loading || !content.trim()}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/80 text-white transition-all disabled:opacity-40 shadow-lg shadow-primary/20"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/80 text-white transition-all disabled:opacity-40 shadow-lg shadow-primary/20"
           >
             <Save size={14} />
-            {saving ? 'Saving…' : 'Save Prompt'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

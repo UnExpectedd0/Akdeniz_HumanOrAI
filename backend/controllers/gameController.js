@@ -27,6 +27,18 @@ exports.askQuestion = async (req, res) => {
       return res.status(400).json({ error: 'There must be at least 1 doctor in the group' });
     }
 
+    // Turn-Based Check: Does this user already have an active question?
+    const activeQuestion = await Question.findOne({
+      where: {
+        user_id: userId,
+        status: ['pending_ai', 'pending_doctor', 'accepted']
+      }
+    });
+
+    if (activeQuestion) {
+      return res.status(400).json({ error: 'You already have an active question. Please wait for an answer.' });
+    }
+
     // AI Limit Check
     const aiLimited = isAiRateLimited();
 
@@ -78,11 +90,65 @@ exports.getPendingQuestionsForDoctors = async (req, res) => {
     const groupId = user.group_id;
 
     const questions = await Question.findAll({
-      where: { status: 'pending_doctor', group_id: groupId },
-      include: [{ model: User, as: 'author', attributes: ['username'] }]
+      where: { 
+        status: ['pending_doctor', 'accepted'], 
+        group_id: groupId 
+      },
+      include: [
+        { model: User, as: 'author', attributes: ['username'] },
+        { model: User, as: 'acceptor', attributes: ['username'] }
+      ],
+      order: [['createdAt', 'ASC']]
     });
     res.json(questions);
   } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.acceptQuestion = async (req, res) => {
+  try {
+    const { questionId } = req.body;
+    const doctorId = req.user.id;
+    const docUser = await User.findByPk(doctorId);
+
+    // Atomic Check: Is this doctor already answering something?
+    const alreadyAnswering = await Question.findOne({
+      where: { accepted_by: doctorId, status: 'accepted' }
+    });
+
+    if (alreadyAnswering) {
+      return res.status(400).json({ error: 'You are already answering a question. Finish it first.' });
+    }
+
+    // Atomic Check: Is the question still available?
+    const question = await Question.findOne({
+      where: { id: questionId, status: 'pending_doctor', group_id: docUser.group_id }
+    });
+
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found or already taken' });
+    }
+
+    question.status = 'accepted';
+    question.accepted_by = doctorId;
+    await question.save();
+
+    logger.milestone(`Doctor '${docUser.username}' accepted Question ID: ${question.id}`);
+
+    const io = getIo();
+    if (io) {
+      io.to(`doctors_${docUser.group_id}`).emit('question_updated', {
+        id: question.id,
+        status: 'accepted',
+        accepted_by: doctorId,
+        acceptor: { username: docUser.username }
+      });
+    }
+
+    res.json({ message: 'Question accepted', question });
+  } catch (err) {
+    logger.error('AcceptQuestion Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -99,9 +165,16 @@ exports.doctorAnswer = async (req, res) => {
     const doctorId = req.user.id;
     const docUser = await User.findByPk(doctorId);
 
-    const question = await Question.findOne({ where: { id: questionId, status: 'pending_doctor', group_id: docUser.group_id } });
+    const question = await Question.findOne({ 
+      where: { 
+        id: questionId, 
+        status: 'accepted', 
+        accepted_by: doctorId,
+        group_id: docUser.group_id 
+      } 
+    });
     if (!question) {
-      return res.status(404).json({ error: 'Question not found, not in your group, or already answered' });
+      return res.status(404).json({ error: 'Question not found, not accepted by you, or already answered' });
     }
 
     const answer = await Answer.create({
@@ -204,6 +277,31 @@ exports.getScoreboard = async (req, res) => {
     });
     res.json(users);
   } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getActiveQuestionForUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const question = await Question.findOne({
+      where: {
+        user_id: userId,
+        status: ['pending_ai', 'pending_doctor', 'accepted']
+      },
+      include: [
+        { 
+          model: Answer, 
+          as: 'answer',
+          include: [{ model: User, as: 'answerer', attributes: ['username'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(question);
+  } catch (err) {
+    logger.error('GetActiveQuestion Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

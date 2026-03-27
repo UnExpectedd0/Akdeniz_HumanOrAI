@@ -32,6 +32,7 @@ export default function Auth() {
         const { data } = await api.post('/auth/guest-login', { username: formData.username });
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
+        window.dispatchEvent(new Event('storage-update'));
         if (data.user.group_id) {
           window.location.href = '/ask';
         } else {
@@ -44,6 +45,7 @@ export default function Auth() {
         });
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('user', JSON.stringify(data.user));
+        window.dispatchEvent(new Event('storage-update'));
         if (data.user.role === 'admin') {
           window.location.href = '/admin/prompt';
         } else if (data.user.group_id) {
@@ -64,10 +66,10 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[85vh] relative">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none"></div>
+    <div className="flex items-center justify-center min-h-[85vh] relative px-4 py-8">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[500px] h-[90vw] max-h-[500px] bg-primary/20 blur-[80px] md:blur-[120px] rounded-full pointer-events-none"></div>
 
-      <div className="glass p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-glassBorder/50">
+      <div className="glass p-6 md:p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-glassBorder/50">
 
         <div className="flex justify-center mb-10">
           <div className="flex items-center space-x-4 bg-dark/50 p-4 rounded-2xl border border-glassBorder">

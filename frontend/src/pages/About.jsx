@@ -3,10 +3,10 @@ import { Info, Code, User, Users, GraduationCap, Server } from 'lucide-react';
 
 export default function About() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[85vh] py-12 px-4 sm:px-6 lg:px-8 relative animate-fade-in-up">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div className="flex flex-col items-center justify-center min-h-[85vh] py-12 px-4 sm:px-6 lg:px-8 relative animate-fade-in-up overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[600px] h-[90vw] max-h-[600px] bg-primary/10 blur-[80px] md:blur-[150px] rounded-full pointer-events-none"></div>
 
-      <div className="w-full max-w-3xl glass p-10 rounded-3xl shadow-2xl relative z-10 border border-glassBorder/50">
+      <div className="w-full max-w-3xl glass p-6 md:p-10 rounded-3xl shadow-2xl relative z-10 border border-glassBorder/50">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center p-4 bg-primary/10 rounded-full mb-4 border border-primary/20">
             <Info className="text-primary w-8 h-8" />
@@ -21,24 +21,40 @@ export default function About() {
             <div>
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Institution</h3>
               <p className="text-white text-lg font-medium">Akdeniz University</p>
-              <p className="text-gray-400">Software Engineering Course Project</p>
+              <p className="text-gray-400">Medical Student Project / Course Assignment</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4 p-5 bg-dark/50 rounded-2xl border border-glassBorder hover:border-secondary/30 transition-colors">
-              <User className="text-secondary mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Lead Developers</h3>
-                <p className="text-white text-lg font-medium">Melih Kerem Arslan <br /> Beril Sude Çimenoğlu</p>
-              </div>
+          <div className="flex items-start gap-4 p-5 bg-primary/5 rounded-2xl border border-primary/20 transition-colors">
+            <User className="text-primary mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Project Advisor</h3>
+              <p className="text-white text-lg font-medium">Dr. Volkan Doğru</p>
             </div>
+          </div>
 
-            <div className="flex items-start gap-4 p-5 bg-dark/50 rounded-2xl border border-glassBorder hover:border-secondary/30 transition-colors">
-              <Users className="text-secondary mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Contributors</h3>
-                <p className="text-white text-lg font-medium">Team Members</p>
+          <div className="flex items-start gap-4 p-5 bg-secondary/5 rounded-2xl border border-secondary/20 transition-colors">
+            <User className="text-secondary mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Lead Developers</h3>
+              <p className="text-white text-lg font-medium leading-tight">
+                Melih Kerem Arslan <br />
+                Beril Sude Çimenoğlu
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 p-5 bg-dark/30 rounded-2xl border border-glassBorder/40 opacity-80 hover:opacity-100 transition-opacity">
+            <Users className="text-gray-500 mt-1 flex-shrink-0" />
+            <div>
+              <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Team Members</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+                {[
+                  'Meryem Ceylin Öz', 'Berzan Davut Tekin', 'Zeynep Naz Kalabalık',
+                  'Eren Özeren', 'Ömer Faruk Çoban', 'Enes Karadağ', 'Mustafa İnanç'
+                ].map(name => (
+                  <p key={name} className="text-gray-400 text-sm whitespace-nowrap">• {name}</p>
+                ))}
               </div>
             </div>
           </div>

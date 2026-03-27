@@ -18,6 +18,10 @@ Question.belongsTo(Group, { foreignKey: 'group_id', as: 'group' });
 User.hasMany(Question, { foreignKey: 'user_id', as: 'questions' });
 Question.belongsTo(User, { foreignKey: 'user_id', as: 'author' });
 
+// Question <-> Doctor (Accepted by)
+User.hasMany(Question, { foreignKey: 'accepted_by', as: 'accepted_questions' });
+Question.belongsTo(User, { foreignKey: 'accepted_by', as: 'acceptor' });
+
 // Question <-> Answer (One-to-One mostly, but maybe a question can have multiple answers if needed. Let's do One-to-One as per logic)
 Question.hasOne(Answer, { foreignKey: 'question_id', as: 'answer' });
 Answer.belongsTo(Question, { foreignKey: 'question_id', as: 'question' });

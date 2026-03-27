@@ -2,10 +2,22 @@ const { Server } = require('socket.io');
 
 let io;
 
-const initSocket = (server, allowedOrigin) => {
+const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: allowedOrigin || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        // Same logic as in index.js for consistency
+        const isLocal = !origin || 
+                       origin.startsWith('http://localhost') || 
+                       origin.startsWith('http://127.0.0.1') || 
+                       /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin);
+
+        if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true
     }
