@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import socket from '../services/socket';
 import api from '../services/api';
-import { Send, Clock, Activity, AlertCircle } from 'lucide-react';
+import { Send, Clock, Activity, AlertCircle, CheckCircle, ShieldAlert, Lock } from 'lucide-react';
 
 export default function DoctorPanel() {
   const [questions, setQuestions] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [answerText, setAnswerText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
@@ -41,15 +42,19 @@ export default function DoctorPanel() {
       fetchPendingQuestions();
     };
 
+    const onQuestionUpdated = () => fetchPendingQuestions();
+
     socket.on('connect', onConnect);
     socket.on('new_question', onNewQuestion);
     socket.on('question_removed', onQuestionRemoved);
+    socket.on('question_updated', onQuestionUpdated);
     socket.on('group_updated', onGroupUpdated);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('new_question', onNewQuestion);
       socket.off('question_removed', onQuestionRemoved);
+      socket.off('question_updated', onQuestionUpdated);
       socket.off('group_updated', onGroupUpdated);
     };
   }, []);
@@ -62,6 +67,20 @@ export default function DoctorPanel() {
       console.error(err);
     }
   };
+
+  const handleAccept = async (questionId) => {
+    setIsAccepting(true);
+    try {
+      await api.post('/game/accept-question', { questionId });
+      fetchPendingQuestions();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to accept question');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const doctorHasAccepted = questions.some(q => q.status === 'accepted' && q.accepted_by === user.id);
 
   const handleAnswer = async (e) => {
     e.preventDefault();
@@ -95,12 +114,12 @@ export default function DoctorPanel() {
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in-up">
-      <div className="mb-8 pl-2 border-l-4 border-secondary">
-        <h2 className="text-4xl font-black text-white tracking-tight">Diagnostic Terminal</h2>
-        <p className="text-gray-400 font-light mt-1">Review incoming queries and provide human expertise.</p>
+      <div className="mb-6 md:mb-8 pl-2 border-l-4 border-secondary mx-2">
+        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">Diagnostic Terminal</h2>
+        <p className="text-sm md:text-gray-400 font-light mt-1">Review incoming queries and provide human expertise.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[75vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 lg:h-[75vh] px-2">
         {/* Left sidebar: Pending questions queue */}
         <div className="col-span-1 glass rounded-3xl p-6 h-full flex flex-col border border-glassBorder/50 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-[50px] rounded-full pointer-events-none"></div>
@@ -132,10 +151,28 @@ export default function DoctorPanel() {
                       : 'bg-dark/40 border-glassBorder hover:border-gray-500 hover:bg-white/5'
                   }`}
                 >
-                  <div className="font-semibold text-white line-clamp-2 mb-3 leading-relaxed">"{q.text}"</div>
-                  <div className={`text-xs flex items-center gap-2 ${selectedQuestion?.id === q.id ? 'text-secondary font-bold' : 'text-gray-400'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${selectedQuestion?.id === q.id ? 'bg-secondary' : 'bg-gray-500'}`}></div>
-                    Patient ID: {q.author?.username || 'Unknown'}
+                 <div className="font-semibold text-white line-clamp-2 mb-3 leading-relaxed">"{q.text}"</div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <div className={`text-[10px] flex items-center gap-2 ${selectedQuestion?.id === q.id ? 'text-secondary font-bold' : 'text-gray-400'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${selectedQuestion?.id === q.id ? 'bg-secondary' : 'bg-gray-500'}`}></div>
+                      Patient ID: {q.author?.username || 'Unknown'}
+                    </div>
+
+                    {q.status === 'accepted' ? (
+                      <div className="flex items-center gap-2 px-2 py-1 rounded bg-secondary/10 border border-secondary/20 text-[10px] text-secondary">
+                        <CheckCircle size={10} />
+                        <span>Accepted by {q.acceptor?.username === user.username ? 'You' : q.acceptor?.username}</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleAccept(q.id); }}
+                        disabled={isAccepting || doctorHasAccepted}
+                        className="mt-2 w-full py-2 bg-secondary/20 hover:bg-secondary/30 disabled:opacity-30 disabled:hover:bg-secondary/20 border border-secondary/30 text-secondary text-[10px] font-black uppercase tracking-wider rounded-lg transition-all"
+                      >
+                        {isAccepting ? 'Processing...' : (doctorHasAccepted ? 'Finish your active task first' : 'Accept Question')}
+                      </button>
+                    )}
                   </div>
                 </button>
               ))
@@ -143,19 +180,39 @@ export default function DoctorPanel() {
           </div>
         </div>
 
-        {/* Right area: Answer Editor */}
         <div className="col-span-1 lg:col-span-2 h-full">
-          {selectedQuestion ? (
+          {!selectedQuestion ? (
+            <div className="h-full glass rounded-3xl flex flex-col items-center justify-center text-gray-500 p-10 text-center border border-glassBorder/30">
+              <div className="w-20 h-20 rounded-full bg-glass border border-glassBorder flex items-center justify-center mb-6">
+                <ShieldAlert size={32} className="text-gray-600" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No Question Selected</h3>
+              <p className="max-w-xs">Select a question from the queue to review and submit your official medical response.</p>
+            </div>
+          ) : selectedQuestion.status !== 'accepted' || selectedQuestion.accepted_by !== user.id ? (
+            <div className="h-full glass rounded-3xl flex flex-col items-center justify-center text-gray-500 p-10 text-center border border-glassBorder/30">
+              <div className="w-20 h-20 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center mb-6">
+                <Lock size={32} className="text-secondary" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Action Required</h3>
+              <p className="max-w-xs">You must <strong>Accept</strong> this question before you can provide an answer.</p>
+              {selectedQuestion.status === 'accepted' && (
+                <p className="mt-4 text-secondary/80 text-sm italic font-medium">
+                  Currently being handled by Dr. {selectedQuestion.acceptor?.username || 'another specialist'}.
+                </p>
+              )}
+            </div>
+          ) : (
             <div className="glass rounded-3xl p-8 flex flex-col h-full border border-glassBorder/50 shadow-2xl relative overflow-hidden animate-fade-in-up">
               <div className="absolute -top-10 -right-10 w-64 h-64 bg-primary/5 blur-[80px] rounded-full pointer-events-none"></div>
 
-              <div className="mb-8 p-8 bg-dark/60 rounded-2xl border border-glassBorder relative overflow-hidden">
+              <div className="mb-4 md:mb-8 p-4 md:p-8 bg-dark/60 rounded-2xl border border-glassBorder relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary"></div>
-                <h3 className="text-xs font-black tracking-[0.2em] text-primary uppercase mb-4 flex items-center gap-2">
+                <h3 className="text-[10px] md:text-xs font-black tracking-[0.2em] text-primary uppercase mb-2 md:mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                   Active Query Analysis
                 </h3>
-                <p className="text-2xl text-white font-medium leading-relaxed">{selectedQuestion.text}</p>
+                <p className="text-lg md:text-2xl text-white font-medium leading-relaxed">{selectedQuestion.text}</p>
               </div>
 
               <form onSubmit={handleAnswer} className="flex flex-col flex-grow relative z-10">
@@ -181,15 +238,6 @@ export default function DoctorPanel() {
                   </button>
                 </div>
               </form>
-            </div>
-          ) : (
-            <div className="glass rounded-3xl border border-glassBorder/30 h-full flex flex-col items-center justify-center text-gray-500 bg-dark/20 backdrop-blur-sm shadow-inner">
-              <div className="w-24 h-24 rounded-full border border-glassBorder flex items-center justify-center bg-dark/40 mb-6 relative overflow-hidden">
-                <div className="absolute inset-0 bg-secondary/5 animate-pulse"></div>
-                <Activity size={40} className="text-gray-600 relative z-10" />
-              </div>
-              <p className="text-2xl font-light tracking-tight text-white/50">Awaiting Query Selection</p>
-              <p className="text-sm text-gray-600 mt-2">Select a patient query from the queue.</p>
             </div>
           )}
         </div>

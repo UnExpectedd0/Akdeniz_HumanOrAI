@@ -5,6 +5,7 @@ const { authMiddleware } = require('../middlewares/auth');
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/admin-login', authController.adminLogin);
 router.post('/guest-login', authController.guestLogin);
 
 // Protected routes for group actions

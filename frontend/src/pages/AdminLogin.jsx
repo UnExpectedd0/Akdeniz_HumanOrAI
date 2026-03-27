@@ -22,7 +22,7 @@ export default function AdminLogin() {
     setError('');
     setIsLoading(true);
     try {
-      const { data } = await api.post('/auth/login', {
+      const { data } = await api.post('/auth/admin-login', {
         username: formData.username,
         password: formData.password,
       });
@@ -44,11 +44,11 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[85vh] relative">
+    <div className="flex items-center justify-center min-h-[85vh] relative px-4 py-8">
       {/* Ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-yellow-500/10 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[450px] h-[90vw] max-h-[450px] bg-yellow-500/10 blur-[80px] md:blur-[140px] rounded-full pointer-events-none" />
 
-      <div className="glass p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-yellow-500/20">
+      <div className="glass p-6 md:p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-yellow-500/20">
 
         {/* Icon header */}
         <div className="flex justify-center mb-8">

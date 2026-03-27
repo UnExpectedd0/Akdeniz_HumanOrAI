@@ -30,6 +30,7 @@ export default function Group() {
       user.group_id = data.groupId;
       user.groupCode = data.groupCode;
       sessionStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('storage-update'));
       window.location.href = user.role === 'doctor' ? '/doctor' : '/ask';
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to create group');
@@ -48,6 +49,7 @@ export default function Group() {
       user.group_id = data.groupId;
       user.groupCode = data.groupCode;
       sessionStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('storage-update'));
       window.location.href = user.role === 'doctor' ? '/doctor' : '/ask';
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to join group');
@@ -57,10 +59,10 @@ export default function Group() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[85vh] relative">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 blur-[120px] rounded-full pointer-events-none"></div>
+    <div className="flex items-center justify-center min-h-[85vh] relative px-4 py-8">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[500px] h-[90vw] max-h-[500px] bg-primary/20 blur-[80px] md:blur-[120px] rounded-full pointer-events-none"></div>
 
-      <div className="glass p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-glassBorder/50">
+      <div className="glass p-6 md:p-10 w-full max-w-md rounded-3xl shadow-2xl animate-fade-in-up relative z-10 border border-glassBorder/50">
         <h2 className="text-3xl font-bold mb-6 text-center text-white tracking-tight">
           Session Info
         </h2>
