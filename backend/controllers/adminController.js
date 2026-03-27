@@ -3,6 +3,10 @@ const { getAIResponse } = require('../services/aiService');
 
 const DEFAULT_PROMPT_NAME = 'layout_prompt';
 
+exports.getConfig = (req, res) => {
+  res.json({ doctorSecret: process.env.DOCTOR_SECRET });
+};
+
 exports.getPrompt = async (req, res) => {
   try {
     const prompt = await Prompt.findOne({ where: { name: DEFAULT_PROMPT_NAME } });

@@ -10,6 +10,7 @@ const logger = require('./services/logger');
 
 const DEFAULT_LAYOUT_PROMPT = 'Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural.';
 const { initSocket } = require('./services/socketService');
+const { initAdmin } = require('./services/initService');
 
 // App & Server
 const app = express();
@@ -75,6 +76,19 @@ sequelize.sync().then(async () => {
     logger.info('Default layout prompt seeded into database.');
   }
 
+  // Initialize automatic admin creation if needed
+  await initAdmin();
+
   server.listen(PORT, () => logger.success(`Server running on port ${PORT}`));
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is already in use. Is another instance of the server running?`);
+      logger.warn(`Kill the other process first, then restart.`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
+  });
 }).catch(err => logger.error('DB Connect Error:', err));
 

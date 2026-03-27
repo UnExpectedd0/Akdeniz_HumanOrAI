@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Save, RefreshCw, AlertCircle, CheckCircle, FlaskConical, SendHorizonal } from 'lucide-react';
+import { ShieldCheck, Save, RefreshCw, AlertCircle, CheckCircle, FlaskConical, SendHorizonal, Eye, EyeOff, KeyRound } from 'lucide-react';
 import api from '../services/api';
 
 export default function AdminPrompt() {
@@ -13,6 +13,10 @@ export default function AdminPrompt() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: string }
+
+  // Doctor secret state
+  const [doctorSecret, setDoctorSecret] = useState(null);
+  const [secretRevealed, setSecretRevealed] = useState(false);
 
   // Tester state
   const [testQuestion, setTestQuestion] = useState('');
@@ -46,6 +50,7 @@ export default function AdminPrompt() {
   useEffect(() => {
     if (!user || user.role !== 'admin') return;
     fetchPrompt();
+    api.get('/admin/config').then(res => setDoctorSecret(res.data.doctorSecret)).catch(() => { });
   }, []);
 
   const fetchPrompt = async () => {
@@ -88,8 +93,33 @@ export default function AdminPrompt() {
           <ShieldCheck size={24} className="text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">AI Prompt Editor</h1>
-          <p className="text-sm text-gray-400">Manage the layout prompt sent to the AI with every question</p>
+          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+          <p className="text-sm text-gray-400">Manage the system</p>
+        </div>
+      </div>
+
+      {/* Doctor Secret Card */}
+      <div className="mb-6 rounded-2xl border border-glassBorder bg-glass backdrop-blur-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30">
+            <KeyRound size={18} className="text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Doctor Invite Code</h2>
+            <p className="text-xs text-gray-500">Share this code with doctors so they can register an account</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 rounded-xl border border-glassBorder bg-dark/60 px-4 py-3 font-mono text-sm tracking-wider text-gray-100 select-all">
+            {secretRevealed ? (doctorSecret ?? '…') : '••••••••••••'}
+          </div>
+          <button
+            onClick={() => setSecretRevealed(v => !v)}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl border border-glassBorder text-gray-400 hover:text-white hover:border-gray-500 transition-all text-sm"
+          >
+            {secretRevealed ? <EyeOff size={16} /> : <Eye size={16} />}
+            {secretRevealed ? 'Hide' : 'Reveal'}
+          </button>
         </div>
       </div>
 
@@ -124,11 +154,10 @@ export default function AdminPrompt() {
 
         {/* Status message */}
         {message && (
-          <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg border ${
-            message.type === 'success'
-              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
-          }`}>
+          <div className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg border ${message.type === 'success'
+            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+            }`}>
             {message.type === 'success'
               ? <CheckCircle size={16} />
               : <AlertCircle size={16} />}

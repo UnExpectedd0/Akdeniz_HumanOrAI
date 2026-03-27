@@ -4,9 +4,11 @@ const { User, Group, Question } = require('../models');
 const { getIo } = require('../services/socketService');
 const logger = require('../services/logger');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET is not set in environment variables');
 
-const DOCTOR_SECRET = process.env.DOCTOR_SECRET || 'MEDIC2026'; // Default secret key
+const DOCTOR_SECRET = process.env.DOCTOR_SECRET;
+if (!DOCTOR_SECRET) throw new Error('DOCTOR_SECRET is not set in environment variables');
 
 exports.register = async (req, res) => {
   try {
@@ -76,8 +78,8 @@ exports.guestLogin = async (req, res) => {
     }
 
     let user = await User.findOne({ where: { username } });
-    if (user && user.role === 'doctor') {
-      return res.status(400).json({ error: 'Username taken by a doctor. Please log in.' });
+    if (user && user.role !== 'user') {
+      return res.status(400).json({ error: 'Username taken by registered personnel. Please log in.' });
     }
     
     if (!user) {
