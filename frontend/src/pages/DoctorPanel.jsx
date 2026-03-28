@@ -9,6 +9,9 @@ export default function DoctorPanel() {
   const [answerText, setAnswerText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
+  
+  // AI Status tracking
+  const [aiStatus, setAiStatus] = useState(null);
 
   const user = JSON.parse(sessionStorage.getItem('user') || 'null');
 
@@ -50,14 +53,27 @@ export default function DoctorPanel() {
     socket.on('question_updated', onQuestionUpdated);
     socket.on('group_updated', onGroupUpdated);
 
+    fetchAiStatus();
+    const aiInterval = setInterval(fetchAiStatus, 10000);
+
     return () => {
       socket.off('connect', onConnect);
       socket.off('new_question', onNewQuestion);
       socket.off('question_removed', onQuestionRemoved);
       socket.off('question_updated', onQuestionUpdated);
       socket.off('group_updated', onGroupUpdated);
+      clearInterval(aiInterval);
     };
   }, []);
+
+  const fetchAiStatus = async () => {
+    try {
+      const res = await api.get('/game/ai-status');
+      setAiStatus(res.data);
+    } catch (err) {
+      console.error('Failed to fetch AI status');
+    }
+  };
 
   const fetchPendingQuestions = async () => {
     try {
@@ -114,9 +130,33 @@ export default function DoctorPanel() {
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in-up">
-      <div className="mb-6 md:mb-8 pl-2 border-l-4 border-secondary mx-2">
-        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">Diagnostic Terminal</h2>
-        <p className="text-sm md:text-gray-400 font-light mt-1">Review incoming queries and provide human expertise.</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 mx-2 gap-4">
+        <div className="pl-2 border-l-4 border-secondary">
+          <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">Diagnostic Terminal</h2>
+          <p className="text-sm md:text-gray-400 font-light mt-1">Review incoming queries and provide human expertise.</p>
+        </div>
+
+        {/* AI Health Indicator for Doctors */}
+        {aiStatus && (
+          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-dark/40 border border-glassBorder shadow-lg">
+            <div className="flex -space-x-1">
+              {['primary', 'secondary'].map(slot => (
+                <div 
+                  key={slot} 
+                  className={`w-2.5 h-2.5 rounded-full border border-dark ${aiStatus[slot]?.waitSeconds > 0 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}
+                  title={`${slot} API: ${aiStatus[slot]?.waitSeconds > 0 ? 'Exhausted' : 'Ready'}`}
+                />
+              ))}
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              {Object.values(aiStatus).some(s => s.waitSeconds > 0) ? (
+                <span className="text-secondary animate-pulse">AI Capacity Limited — Human Priority</span>
+              ) : (
+                <span>AI Systems Operational</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 lg:h-[75vh] px-2">

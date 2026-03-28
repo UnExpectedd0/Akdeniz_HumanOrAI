@@ -17,5 +17,6 @@ router.get('/active-question', gameController.getActiveQuestionForUser);
 router.get('/pending-questions', doctorOnly, gameController.getPendingQuestionsForDoctors);
 router.post('/accept-question', doctorOnly, gameController.acceptQuestion);
 router.post('/answer', doctorOnly, gameController.doctorAnswer);
+router.get('/ai-status', gameController.getAiStatus);
 
 module.exports = router;

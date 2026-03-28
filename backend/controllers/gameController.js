@@ -1,5 +1,5 @@
 const { Question, Answer, Guess, User } = require('../models');
-const { handleAIQuestion, isAiRateLimited, recordAiRequest } = require('../services/aiService');
+const { handleAIQuestion, isAiRateLimited, recordAiRequest, getAvailableKeySlot, getAiStatus } = require('../services/aiService');
 const { getIo } = require('../services/socketService');
 const logger = require('../services/logger');
 
@@ -39,19 +39,23 @@ exports.askQuestion = async (req, res) => {
       return res.status(400).json({ error: 'You already have an active question. Please wait for an answer.' });
     }
 
-    // AI Limit Check
-    const aiLimited = isAiRateLimited();
+    // AI Limit Check: find an available API key slot
+    const availableSlot = getAvailableKeySlot();
 
     let isAiAssigned = false;
+    let chosenSlot = null;
 
-    if (aiLimited) {
-      isAiAssigned = false; // Force strictly to doctor
+    if (availableSlot === null) {
+      isAiAssigned = false; // All keys exhausted — force to doctor
+      logger.warn('AI Rate Limit reached (all keys exhausted). Falling back to human doctor.');
     } else {
-      isAiAssigned = Math.random() < 0.5; // Random choice
+      // 35% chance for AI, 65% chance for doctor
+      isAiAssigned = Math.random() < 0.35;
+      if (isAiAssigned) chosenSlot = availableSlot;
     }
 
     if (isAiAssigned) {
-      recordAiRequest();
+      recordAiRequest(chosenSlot);
     }
 
     const status = isAiAssigned ? 'pending_ai' : 'pending_doctor';
@@ -64,9 +68,9 @@ exports.askQuestion = async (req, res) => {
     });
 
     if (isAiAssigned) {
-      // Background AI handling
-      handleAIQuestion(question.id, text, userId);
-      logger.milestone(`Question by '${user.username}' -> Assigned to: AI`);
+      // Background AI handling — pass the chosen key slot
+      handleAIQuestion(question.id, text, userId, chosenSlot);
+      logger.milestone(`Question by '${user.username}' -> Assigned to: AI (slot: ${chosenSlot})`);
     } else {
       // Emit to doctors in this specific group
       const io = getIo();
@@ -302,6 +306,20 @@ exports.getActiveQuestionForUser = async (req, res) => {
     res.json(question);
   } catch (err) {
     logger.error('GetActiveQuestion Error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getAiStatus = async (req, res) => {
+  try {
+    // Only Doctors or Admins should see the AI technical status
+    if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const stats = getAiStatus();
+    res.json(stats);
+  } catch (err) {
+    logger.error('GetAiStatus Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
