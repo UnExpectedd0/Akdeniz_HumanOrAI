@@ -3,23 +3,40 @@ const { getIo } = require('./socketService');
 const { GoogleGenAI } = require('@google/genai');
 const logger = require('./logger');
 
-const requestTimestamps = [];
 const AI_RPM_LIMIT = 14; // Safely below 15 to prevent accidental 429 errors
+
+// Per-key rate limit tracking
+const keyTimestamps = {
+  primary: [],
+  secondary: []
+};
+
+// Tracks hard blocks (like 429 Resource Exhausted)
+const keyExhaustedUntil = {
+  primary: 0,
+  secondary: 0
+};
 
 const DEFAULT_PROMPT =
   'Answer this question as an AI assistant. The users in a game will try to guess if this answer was written by AI or a Human doctor. Keep it helpful but natural.';
 
-const isAiRateLimited = () => {
+// Returns which key slot is available ('primary', 'secondary', or null if all limited)
+const getAvailableKeySlot = () => {
   const now = Date.now();
-  // Remove timestamps older than exactly 1 minute
-  while (requestTimestamps.length > 0 && now - requestTimestamps[0] > 60000) {
-    requestTimestamps.shift();
+  for (const slot of ['primary', 'secondary']) {
+    const ts = keyTimestamps[slot];
+    while (ts.length > 0 && now - ts[0] > 60000) ts.shift();
+    if (ts.length < AI_RPM_LIMIT) return slot;
   }
-  return requestTimestamps.length >= AI_RPM_LIMIT;
+  return null; // All keys exhausted
 };
 
-const recordAiRequest = () => {
-  requestTimestamps.push(Date.now());
+// Legacy: checks if ALL keys are rate limited (used in gameController)
+const isAiRateLimited = () => getAvailableKeySlot() === null;
+
+const recordAiRequest = (slot) => {
+  const target = slot || 'primary';
+  keyTimestamps[target].push(Date.now());
 };
 
 const getLayoutPrompt = async () => {
@@ -32,36 +49,55 @@ const getLayoutPrompt = async () => {
   return DEFAULT_PROMPT;
 };
 
-const getAIResponse = async (questionText) => {
-  try {
-    const layoutPrompt = await getLayoutPrompt();
-    const fullPrompt = `${layoutPrompt} Question: ${questionText}`;
+const getAIResponse = async (questionText, preferredSlot) => {
+  const layoutPrompt = await getLayoutPrompt();
+  const fullPrompt = `${layoutPrompt} Question: ${questionText}`;
+  const modelName = 'gemini-2.5-flash';
 
-    let ai;
-    let modelName = 'gemini-2.5-flash';
+  // Build API key candidates in preference order
+  const keyCandidates = [];
+  if (preferredSlot === 'secondary') {
+    if (process.env.GEMINI_API_KEY_2) keyCandidates.push({ slot: 'secondary', key: process.env.GEMINI_API_KEY_2 });
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') keyCandidates.push({ slot: 'primary', key: process.env.GEMINI_API_KEY });
+  } else {
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') keyCandidates.push({ slot: 'primary', key: process.env.GEMINI_API_KEY });
+    if (process.env.GEMINI_API_KEY_2) keyCandidates.push({ slot: 'secondary', key: process.env.GEMINI_API_KEY_2 });
+  }
 
-    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
-      ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      ai = new GoogleGenAI({
+  for (const candidate of keyCandidates) {
+    // Skip if this key is explicitly blocked
+    if (Date.now() < keyExhaustedUntil[candidate.slot]) continue;
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: candidate.key });
+      const response = await ai.models.generateContent({ model: modelName, contents: fullPrompt });
+      if (response && response.text) {
+        logger.milestone(`AI response via ${candidate.slot} key`);
+        return response.text;
+      }
+    } catch (error) {
+      if (error.message?.includes('429') || error.message?.includes('Resource has been exhausted')) {
+        logger.error(`AI Quota Exhausted for ${candidate.slot} key! Blocking for 1 hour.`);
+        keyExhaustedUntil[candidate.slot] = Date.now() + (60 * 60 * 1000); // 1 hour block
+      } else {
+        logger.error(`AI Service Error with ${candidate.slot} key:`, error.message);
+      }
+    }
+  }
+
+  // Vertex AI fallback
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    try {
+      const ai = new GoogleGenAI({
         vertexai: { project: 'humanorai-490512', location: 'us-central1' },
         project: 'humanorai-490512',
         location: 'us-central1'
       });
+      const response = await ai.models.generateContent({ model: modelName, contents: fullPrompt });
+      if (response && response.text) return response.text;
+    } catch (error) {
+      logger.error('AI Service Error with Vertex AI:', error.message);
     }
-
-    if (ai) {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: fullPrompt,
-      });
-      
-      if (response && response.text) {
-        return response.text;
-      }
-    }
-  } catch (error) {
-    logger.error('AI Service Error (falling back to mock data):', error);
   }
 
   // FALLBACK FOR FRIENDS TESTING WITHOUT ACCOUNTS:
@@ -82,9 +118,9 @@ const getAIResponse = async (questionText) => {
 };
 
 
-const handleAIQuestion = async (questionId, questionText, userId) => {
+const handleAIQuestion = async (questionId, questionText, userId, preferredSlot) => {
   try {
-    const aiText = await getAIResponse(questionText);
+    const aiText = await getAIResponse(questionText, preferredSlot);
     
     // Save to DB
     const answer = await Answer.create({
@@ -110,4 +146,41 @@ const handleAIQuestion = async (questionId, questionText, userId) => {
   }
 };
 
-module.exports = { handleAIQuestion, getAIResponse, isAiRateLimited, recordAiRequest };
+const getAiStatus = () => {
+  const now = Date.now();
+  const stats = {};
+
+  ['primary', 'secondary'].forEach(slot => {
+    // Clean up old timestamps
+    const ts = keyTimestamps[slot];
+    while (ts.length > 0 && now - ts[0] > 60000) ts.shift();
+
+    const isExhausted = now < keyExhaustedUntil[slot];
+    let waitSeconds = 0;
+
+    if (isExhausted) {
+      waitSeconds = Math.ceil((keyExhaustedUntil[slot] - now) / 1000);
+    } else if (ts.length >= AI_RPM_LIMIT) {
+      // If at RPM limit, wait is time until oldest timestamp expires
+      waitSeconds = Math.ceil((60000 - (now - ts[0])) / 1000);
+    }
+
+    stats[slot] = {
+      used: ts.length,
+      limit: AI_RPM_LIMIT,
+      isExhausted,
+      waitSeconds: Math.max(0, waitSeconds)
+    };
+  });
+
+  return stats;
+};
+
+module.exports = { 
+  handleAIQuestion, 
+  getAIResponse, 
+  isAiRateLimited, 
+  recordAiRequest, 
+  getAvailableKeySlot,
+  getAiStatus
+};

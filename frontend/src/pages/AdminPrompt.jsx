@@ -23,6 +23,9 @@ export default function AdminPrompt() {
   const [testResult, setTestResult] = useState(null); // { answer, isMock }
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState('');
+  
+  // AI Status tracking
+  const [aiStatus, setAiStatus] = useState(null);
 
   const handleTest = async () => {
     if (!testQuestion.trim()) return;
@@ -46,12 +49,25 @@ export default function AdminPrompt() {
     }
   }, []);
 
-  // Load current prompt
+  // Load current prompt and AI status
   useEffect(() => {
     if (!user || user.role !== 'admin') return;
     fetchPrompt();
+    fetchAiStatus();
     api.get('/admin/config').then(res => setDoctorSecret(res.data.doctorSecret)).catch(() => { });
+
+    const interval = setInterval(fetchAiStatus, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchAiStatus = async () => {
+    try {
+      const res = await api.get('/game/ai-status');
+      setAiStatus(res.data);
+    } catch (err) {
+      console.error('Failed to fetch AI status');
+    }
+  };
 
   const fetchPrompt = async () => {
     setLoading(true);
@@ -96,6 +112,52 @@ export default function AdminPrompt() {
           <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
           <p className="text-sm text-gray-400">Manage the system</p>
         </div>
+      </div>
+
+      {/* AI Status Radar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        {['primary', 'secondary'].map(slot => {
+          const stats = aiStatus?.[slot];
+          const isBusy = stats?.waitSeconds > 0;
+          return (
+            <div key={slot} className={`rounded-2xl border p-5 backdrop-blur-md transition-all ${
+              isBusy ? 'bg-red-500/10 border-red-500/30' : 'bg-glass border-glassBorder'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${isBusy ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                    {slot} API
+                  </span>
+                </div>
+                {isBusy && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/20">
+                    EXHAUSTED
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-end justify-between mb-2">
+                <div className="text-2xl font-black text-white">
+                  {isBusy ? 'Paused' : `${stats?.used || 0}/${stats?.limit || 15}`}
+                  <span className="text-xs text-gray-500 font-normal ml-1">RPM</span>
+                </div>
+                {isBusy && (
+                  <div className="text-sm font-mono text-red-400">
+                    retry in {stats.waitSeconds}s
+                  </div>
+                )}
+              </div>
+
+              <div className="h-1.5 w-full bg-dark/50 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-1000 ${isBusy ? 'bg-red-500' : 'bg-primary'}`}
+                  style={{ width: `${Math.min(100, (stats?.used / stats?.limit) * 100 || 0)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Doctor Secret Card */}

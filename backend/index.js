@@ -74,7 +74,7 @@ initSocket(server);
 
 // Start server
 
-sequelize.sync({ alter: true }).then(async () => {
+sequelize.sync().then(async () => {
   logger.success('Database synced successfully');
 
   // Seed default layout prompt if it doesn't exist yet
