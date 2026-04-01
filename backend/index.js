@@ -21,15 +21,18 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors({ 
   origin: function (origin, callback) {
-    // 1. Allow if there's no origin (like mobile apps or curl)
-    // 2. Allow if it's from localhost/127.0.0.1
-    // 3. Allow if it's from a private local network (192.168.x.x, 10.x.x.x, 172.16.x.x) on the dev port
-    const isLocal = !origin || 
-                   origin.startsWith('http://localhost') || 
+    // 1. Allow if there's no origin (same-site, mobile apps, or curl)
+    if (!origin) return callback(null, true);
+
+    // 2. Allow if it's from localhost/local network
+    const isLocal = origin.startsWith('http://localhost') || 
                    origin.startsWith('http://127.0.0.1') || 
                    /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|26\.)/.test(origin);
 
-    if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
+    // 3. Allow if it matches our own domain or the configured ALLOWED_ORIGIN
+    const isSelf = origin.includes('onrender.com'); // Simple catch-all for Render domains
+
+    if (isLocal || isSelf || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
       callback(null, true);
     } else {
       console.error(`CORS Blocked Origin: ${origin}`);
