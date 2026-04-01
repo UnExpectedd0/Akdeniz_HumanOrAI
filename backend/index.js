@@ -64,10 +64,11 @@ const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   // All non-API routes -> index.html (React Router handles client-side routing)
-  app.get('(.*)', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(frontendDist, 'index.html'));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(path.join(frontendDist, 'index.html'));
     }
+    next();
   });
   logger.info(`Serving static frontend from: ${frontendDist}`);
 }
