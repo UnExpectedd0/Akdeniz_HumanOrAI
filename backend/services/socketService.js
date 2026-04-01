@@ -10,11 +10,12 @@ const initSocket = (server) => {
         const isLocal = !origin || 
                        origin.startsWith('http://localhost') || 
                        origin.startsWith('http://127.0.0.1') || 
-                       /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin);
+                       /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|26\.)/.test(origin);
 
         if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
           callback(null, true);
         } else {
+          console.error(`Socket CORS Blocked Origin: ${origin}`);
           callback(new Error('Not allowed by CORS'));
         }
       },

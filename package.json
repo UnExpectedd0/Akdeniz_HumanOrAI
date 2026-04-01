@@ -1,0 +1,13 @@
+{
+  "name": "akdeniz-human-or-ai-monolith",
+  "version": "1.0.0",
+  "description": "Unified React + Node application for Akdeniz Game.",
+  "scripts": {
+    "build": "cd frontend && npm install --include=dev && npm run build && cd ../backend && npm install",
+    "start": "cd backend && node index.js",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  }
+}

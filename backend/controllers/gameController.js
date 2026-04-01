@@ -49,8 +49,8 @@ exports.askQuestion = async (req, res) => {
       isAiAssigned = false; // All keys exhausted — force to doctor
       logger.warn('AI Rate Limit reached (all keys exhausted). Falling back to human doctor.');
     } else {
-      // 35% chance for AI, 65% chance for doctor
-      isAiAssigned = Math.random() < 0.35;
+      // 50% chance for AI, 50% chance for doctor
+      isAiAssigned = Math.random() < 0.60;
       if (isAiAssigned) chosenSlot = availableSlot;
     }
 
@@ -94,9 +94,9 @@ exports.getPendingQuestionsForDoctors = async (req, res) => {
     const groupId = user.group_id;
 
     const questions = await Question.findAll({
-      where: { 
-        status: ['pending_doctor', 'accepted'], 
-        group_id: groupId 
+      where: {
+        status: ['pending_doctor', 'accepted'],
+        group_id: groupId
       },
       include: [
         { model: User, as: 'author', attributes: ['username'] },
@@ -169,13 +169,13 @@ exports.doctorAnswer = async (req, res) => {
     const doctorId = req.user.id;
     const docUser = await User.findByPk(doctorId);
 
-    const question = await Question.findOne({ 
-      where: { 
-        id: questionId, 
-        status: 'accepted', 
+    const question = await Question.findOne({
+      where: {
+        id: questionId,
+        status: 'accepted',
         accepted_by: doctorId,
-        group_id: docUser.group_id 
-      } 
+        group_id: docUser.group_id
+      }
     });
     if (!question) {
       return res.status(404).json({ error: 'Question not found, not accepted by you, or already answered' });
@@ -294,8 +294,8 @@ exports.getActiveQuestionForUser = async (req, res) => {
         status: ['pending_ai', 'pending_doctor', 'accepted']
       },
       include: [
-        { 
-          model: Answer, 
+        {
+          model: Answer,
           as: 'answer',
           include: [{ model: User, as: 'answerer', attributes: ['username'] }]
         }

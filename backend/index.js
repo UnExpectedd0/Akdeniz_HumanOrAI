@@ -27,11 +27,12 @@ app.use(cors({
     const isLocal = !origin || 
                    origin.startsWith('http://localhost') || 
                    origin.startsWith('http://127.0.0.1') || 
-                   /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin);
+                   /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|26\.)/.test(origin);
 
     if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
       callback(null, true);
     } else {
+      console.error(`CORS Blocked Origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   }, 
@@ -63,10 +64,12 @@ const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   // All non-API routes -> index.html (React Router handles client-side routing)
-  app.get('{*splat}', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+  app.get('(.*)', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    }
   });
-  logger.info('Serving frontend from ../frontend/dist');
+  logger.info(`Serving static frontend from: ${frontendDist}`);
 }
 
 // Init Socket.io
