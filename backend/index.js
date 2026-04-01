@@ -65,13 +65,25 @@ if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   // All non-API routes -> index.html (React Router handles client-side routing)
   app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api')) {
-      return res.sendFile(path.join(frontendDist, 'index.html'));
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.includes('.')) {
+      const indexPath = path.resolve(frontendDist, 'index.html');
+      return res.sendFile(indexPath, (err) => {
+        if (err) {
+          logger.error(`Error sending index.html: ${err.message} at ${indexPath}`);
+          res.status(500).send("Frontend build not found.");
+        }
+      });
     }
     next();
   });
-  logger.info(`Serving static frontend from: ${frontendDist}`);
+  logger.info(`Serving static frontend from: ${path.resolve(frontendDist)}`);
 }
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  logger.error('Unhandled Server Error:', err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
 
 // Init Socket.io
 initSocket(server);
