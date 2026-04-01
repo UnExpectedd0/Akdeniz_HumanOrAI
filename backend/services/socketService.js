@@ -6,13 +6,18 @@ const initSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: (origin, callback) => {
-        // Same logic as in index.js for consistency
-        const isLocal = !origin || 
-                       origin.startsWith('http://localhost') || 
+        // 1. Allow if there's no origin (same-site or local)
+        if (!origin) return callback(null, true);
+
+        // 2. Allow if it's from localhost/local network
+        const isLocal = origin.startsWith('http://localhost') || 
                        origin.startsWith('http://127.0.0.1') || 
                        /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|26\.)/.test(origin);
 
-        if (isLocal || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
+        // 3. Allow if it matches our own domain or the configured ALLOWED_ORIGIN
+        const isSelf = origin.includes('onrender.com');
+
+        if (isLocal || isSelf || (process.env.ALLOWED_ORIGIN && origin === process.env.ALLOWED_ORIGIN)) {
           callback(null, true);
         } else {
           console.error(`Socket CORS Blocked Origin: ${origin}`);
