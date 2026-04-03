@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogOut, User as UserIcon, XCircle, ShieldCheck, Menu, X } from 'lucide-react';
 import api from '../services/api';
 import socket from '../services/socket';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Navbar() {
   const [pendingCount, setPendingCount] = useState(0);
@@ -10,6 +11,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(JSON.parse(sessionStorage.getItem('user') || 'null'));
   const location = useLocation();
+  const { lang, toggleLang, t } = useLanguage();
 
   // Sync user state with sessionStorage
   useEffect(() => {
@@ -115,12 +117,12 @@ export default function Navbar() {
         <div className="hidden lg:flex items-center gap-8">
           <div className="flex gap-6 text-sm font-medium">
             <Link to="/about" className="text-gray-400 hover:text-white transition-colors">
-              About
+              {t('navbar.about')}
             </Link>
             {user && (
               <>
                 <Link to="/scoreboard" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-                  Scoreboard
+                  {t('navbar.scoreboard')}
                   {user.group_id && playerCount > 0 && (
                     <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-[10px] text-green-400 font-bold uppercase tracking-tighter animate-fade-in">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-[pulse_2s_ease-in-out_infinite]"></span>
@@ -130,7 +132,7 @@ export default function Navbar() {
                 </Link>
                 {user.role === 'doctor' && (
                   <Link to="/doctor" className="text-secondary hover:text-white transition-colors flex items-center gap-2">
-                    Doctor Panel
+                    {t('navbar.doctor')}
                     {pendingCount > 0 && (
                       <span className="bg-secondary text-white text-[10px] font-black px-1.5 py-0.5 rounded-md animate-pulse">
                         {pendingCount}
@@ -140,9 +142,12 @@ export default function Navbar() {
                 )}
                 {user.role === 'user' && (
                   <Link to="/ask" className="text-primary hover:text-white transition-colors">
-                    Play
+                    {t('navbar.play')}
                   </Link>
                 )}
+                <Link to="/group" className="text-gray-400 hover:text-white transition-colors">
+                  {t('navbar.groups')}
+                </Link>
                 {user.role === 'admin' && (
                   <Link to="/admin/prompt" className="flex items-center gap-1 text-yellow-400 hover:text-white transition-colors">
                     <ShieldCheck size={13} />
@@ -162,7 +167,7 @@ export default function Navbar() {
                     <button
                       onClick={handleLeaveGroup}
                       className="ml-2 text-red-400/70 hover:text-red-400 hover:bg-red-400/20 rounded p-1 transition-all"
-                      title="Leave Group"
+                      title={t('navbar.leave_group')}
                     >
                       <XCircle size={14} />
                     </button>
@@ -176,13 +181,30 @@ export default function Navbar() {
               <button
                 onClick={handleLogout}
                 className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                title="Logout"
+                title={t('navbar.logout')}
               >
                 <LogOut size={16} />
+              </button>
+              {/* Language Toggle - always outside user block */}
+              <button
+                onClick={toggleLang}
+                className="px-2.5 py-1 text-xs font-black rounded-lg border border-glassBorder text-primary hover:text-white hover:border-primary/50 transition-all tracking-widest uppercase"
+              >
+                {lang.toUpperCase()}
               </button>
             </div>
           )}
         </div>
+
+        {/* Language toggle always visible on desktop when no user */}
+        {!user && (
+          <button
+            onClick={toggleLang}
+            className="hidden lg:block px-2.5 py-1 text-xs font-black rounded-lg border border-glassBorder text-gray-400 hover:text-white hover:border-primary/50 transition-all tracking-widest uppercase"
+          >
+            {lang.toUpperCase()}
+          </button>
+        )}
 
         {/* Mobile menu button */}
         <div className="flex lg:hidden items-center gap-3">
@@ -191,6 +213,12 @@ export default function Navbar() {
                 GRP: <span className="text-white font-bold">{user.groupCode || '...'}</span>
              </div>
           )}
+          <button
+            onClick={toggleLang}
+            className="px-2 py-1 text-[10px] font-black rounded-md border border-glassBorder text-gray-400 hover:text-white transition-all tracking-widest uppercase"
+          >
+            {lang.toUpperCase()}
+          </button>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="p-2 text-gray-400 hover:text-white transition-all"
@@ -209,7 +237,7 @@ export default function Navbar() {
               onClick={() => setIsMenuOpen(false)}
               className="text-xl text-gray-300 hover:text-white flex items-center gap-3"
             >
-              About
+              {t('navbar.about')}
             </Link>
             {user && (
               <>
@@ -218,10 +246,10 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                   className="text-xl text-gray-300 hover:text-white flex items-center justify-between"
                 >
-                  Scoreboard
+                  {t('navbar.scoreboard')}
                   {playerCount > 0 && (
                     <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30">
-                      {playerCount} Active
+                      {playerCount} {t('navbar.active')}
                     </span>
                   )}
                 </Link>
@@ -231,10 +259,10 @@ export default function Navbar() {
                     onClick={() => setIsMenuOpen(false)}
                     className="text-xl text-secondary hover:text-white flex items-center justify-between"
                   >
-                    Doctor Panel
+                    {t('navbar.doctor')}
                     {pendingCount > 0 && (
                       <span className="text-xs px-2 py-1 rounded bg-secondary/20 text-secondary border border-secondary/30 font-bold">
-                        {pendingCount} Pending
+                        {pendingCount} {t('navbar.pending')}
                       </span>
                     )}
                   </Link>
@@ -245,9 +273,16 @@ export default function Navbar() {
                     onClick={() => setIsMenuOpen(false)}
                     className="text-xl text-primary hover:text-white"
                   >
-                    Play Game
+                    {t('navbar.play')}
                   </Link>
                 )}
+                <Link 
+                  to="/group" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="text-xl text-gray-300 hover:text-white"
+                >
+                  {t('navbar.groups')}
+                </Link>
                 {user.role === 'admin' && (
                   <Link 
                     to="/admin/prompt" 
@@ -269,7 +304,7 @@ export default function Navbar() {
                   <UserIcon size={20} className="text-primary" />
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">Logged in as</div>
+                  <div className="text-xs text-gray-500 uppercase tracking-widest font-bold">{t('navbar.logged_in_as')}</div>
                   <div className="text-lg text-white font-bold">{user.username}</div>
                 </div>
               </div>
@@ -281,7 +316,7 @@ export default function Navbar() {
                     className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 font-bold"
                   >
                     <XCircle size={18} />
-                    Leave Group
+                    {t('navbar.leave_group')}
                   </button>
                 )}
                 <button
@@ -289,7 +324,13 @@ export default function Navbar() {
                   className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-gray-500/10 text-gray-400 border border-glassBorder font-bold"
                 >
                   <LogOut size={18} />
-                  Logout
+                  {t('navbar.logout')}
+                </button>
+                <button
+                  onClick={() => { toggleLang(); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary/10 text-primary border border-primary/20 font-black tracking-widest uppercase text-sm"
+                >
+                  {lang === 'en' ? '🇹🇷 TR' : '🇬🇧 EN'}
                 </button>
               </div>
             </div>

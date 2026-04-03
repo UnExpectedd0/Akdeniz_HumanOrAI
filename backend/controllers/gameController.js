@@ -1,4 +1,4 @@
-const { Question, Answer, Guess, User } = require('../models');
+const { Question, Answer, Guess, User, GroupMember, Group } = require('../models');
 const { handleAIQuestion, isAiRateLimited, recordAiRequest, getAvailableKeySlot, getAiStatus } = require('../services/aiService');
 const { getIo } = require('../services/socketService');
 const logger = require('../services/logger');
@@ -241,19 +241,56 @@ exports.submitGuess = async (req, res) => {
       correct: isCorrect
     });
 
-    // Scoring logic
+    // Scoring logic (Group-based persistent stats)
     const user = await User.findByPk(userId);
-    if (isCorrect) {
-      user.score += 1;
-      // No longer deducting points from doctors when caught
-    } else {
-      if (!answer.is_ai && answer.answerer_id) {
-        const doc = await User.findByPk(answer.answerer_id);
-        doc.score += 1;
-        await doc.save();
+    const member = await GroupMember.findOne({
+      where: { user_id: userId, group_id: user.group_id }
+    });
+
+    if (member) {
+      if (isCorrect) {
+        member.correct_guesses += 1;
+        user.score += 1; // Keeping global score for legacy/compatibility
+      } else {
+        member.incorrect_guesses += 1;
+        if (answer.is_ai) {
+          member.incorrect_ai += 1;
+        } else {
+          member.incorrect_human += 1;
+        }
+      }
+
+      if (answer.is_ai) {
+        member.ai_answers_encountered += 1;
+      } else {
+        member.human_answers_encountered += 1;
+      }
+      await member.save();
+      await user.save();
+    }
+
+    // Doctor Stats
+    if (!answer.is_ai && answer.answerer_id) {
+      const docMember = await GroupMember.findOne({
+        where: { user_id: answer.answerer_id, group_id: user.group_id }
+      });
+      const doctor = await User.findByPk(answer.answerer_id);
+
+      if (docMember) {
+        if (!isCorrect) {
+          // User was tricked
+          docMember.tricked_users += 1;
+          if (doctor) {
+            doctor.score += 1;
+            await doctor.save();
+          }
+        } else {
+          // User was NOT tricked
+          docMember.failed_to_trick += 1;
+        }
+        await docMember.save();
       }
     }
-    await user.save();
 
     logger.milestone(`Guess by '${user.username}' -> Result: ${isCorrect ? 'CORRECT' : 'FOOLED'} (Actual: ${answer.is_ai ? 'AI' : 'Human'})`);
 
@@ -274,12 +311,29 @@ exports.getScoreboard = async (req, res) => {
       return res.json([]);
     }
 
-    const users = await User.findAll({
+    const members = await GroupMember.findAll({
       where: { group_id: groupId },
-      attributes: ['id', 'username', 'role', 'score'],
-      order: [['score', 'DESC']]
+      include: [{ model: User, as: 'user', attributes: ['username'] }],
+      order: [['correct_guesses', 'DESC'], ['tricked_users', 'DESC']]
     });
-    res.json(users);
+
+    // Format data for frontend
+    const formatted = members.map(m => ({
+      id: m.user_id,
+      username: m.user?.username,
+      role: m.role,
+      correct_guesses: m.correct_guesses,
+      incorrect_guesses: m.incorrect_guesses,
+      incorrect_ai: m.incorrect_ai,
+      incorrect_human: m.incorrect_human,
+      ai_answers_encountered: m.ai_answers_encountered,
+      human_answers_encountered: m.human_answers_encountered,
+      tricked_users: m.tricked_users,
+      failed_to_trick: m.failed_to_trick,
+      score: m.role === 'doctor' ? m.tricked_users : m.correct_guesses // Compatible score field
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -306,6 +360,47 @@ exports.getActiveQuestionForUser = async (req, res) => {
     res.json(question);
   } catch (err) {
     logger.error('GetActiveQuestion Error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getGroups = async (req, res) => {
+  try {
+    const groups = await Group.findAll({
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(groups);
+  } catch (err) {
+    logger.error('GetGroups Error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.id;
+
+    const group = await Group.findByPk(groupId);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    if (group.creator_id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only the creator can delete this group' });
+    }
+
+    // Manual cleanup of related records (Extra safety for SQLite)
+    await GroupMember.destroy({ where: { group_id: groupId } });
+    await Question.destroy({ where: { group_id: groupId } });
+    await User.update({ group_id: null }, { where: { group_id: groupId } });
+    
+    // Now delete the group
+    await group.destroy();
+
+    logger.milestone(`Group Deleted: ${group.name} (${group.code}) by ${req.user.username}`);
+
+    res.json({ message: 'Group deleted successfully' });
+  } catch (err) {
+    logger.error('DeleteGroup Error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

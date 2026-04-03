@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { BrainCircuit, User } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Auth() {
   const [authMode, setAuthMode] = useState('guest'); // 'guest', 'login', 'register'
@@ -8,6 +9,7 @@ export default function Auth() {
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useLanguage();
 
   // If already logged in, redirect appropriately
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function Auth() {
         </div>
 
         <h2 className="text-3xl font-bold mb-6 text-center text-white tracking-tight">
-          {authMode === 'guest' ? 'Play as Guest' : authMode === 'login' ? 'Doctor Login' : 'Doctor Registration'}
+          {authMode === 'guest' ? t('auth.guest_button') : authMode === 'login' ? t('auth.doctor_button') : 'Doctor Registration'}
         </h2>
 
         {error && (
@@ -105,7 +107,7 @@ export default function Auth() {
               className={`px-4 py-2 rounded-lg transition-all ${authMode === 'login' ? 'bg-secondary text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
               onClick={() => setAuthMode('login')}
             >
-              Doctor Login
+              {t('auth.doctor_button')}
             </button>
           </div>
 
@@ -116,7 +118,7 @@ export default function Auth() {
                 required
                 type="text"
                 className="w-full bg-dark/50 border border-glassBorder rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-gray-600"
-                placeholder="Enter your username"
+                placeholder={t('auth.guest_placeholder')}
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               />
@@ -157,7 +159,7 @@ export default function Auth() {
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:scale-[1.02] transition-all mt-6 disabled:opacity-70 disabled:hover:scale-100"
             >
-              {isLoading ? 'Processing...' : (authMode === 'guest' ? 'Play Now' : authMode === 'login' ? 'Login' : 'Create Account')}
+              {isLoading ? '...' : (authMode === 'guest' ? t('auth.guest_button') : authMode === 'login' ? t('auth.doctor_button') : 'Create Account')}
             </button>
           </form>
 

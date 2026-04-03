@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Group, Question } = require('../models');
+const { User, Group, Question, GroupMember } = require('../models');
 const { getIo } = require('../services/socketService');
 const logger = require('../services/logger');
 
@@ -137,6 +137,12 @@ const generateGroupCode = () => {
 exports.createGroup = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { name } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length < 3) {
+      return res.status(400).json({ error: 'Group name is required and must be at least 3 characters' });
+    }
+
     let code;
     let isUnique = false;
     
@@ -146,14 +152,25 @@ exports.createGroup = async (req, res) => {
       if (!existing) isUnique = true;
     }
 
-    const group = await Group.create({ code });
+    const group = await Group.create({ 
+      name: name.trim(), 
+      code, 
+      creator_id: userId 
+    });
     
-    // Reset score to 0 and Update user group_id
-    await User.update({ group_id: group.id, score: 0 }, { where: { id: userId } });
+    // Update user group_id
+    await User.update({ group_id: group.id }, { where: { id: userId } });
+
+    // Create GroupMember record for the creator
+    await GroupMember.create({
+      user_id: userId,
+      group_id: group.id,
+      role: req.user.role
+    });
 
     logger.milestone(`Group Created: ${group.code} (by ${req.user.username})`);
 
-    res.status(201).json({ message: 'Group created', groupCode: group.code, groupId: group.id });
+    res.status(201).json({ message: 'Group created', groupCode: group.code, groupId: group.id, groupName: group.name });
   } catch (error) {
     logger.error('CreateGroup Error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -163,17 +180,35 @@ exports.createGroup = async (req, res) => {
 exports.joinGroup = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { code } = req.body;
+    const { code, groupId } = req.body;
 
-    if (!code) return res.status(400).json({ error: 'Group code is required' });
+    if (!code && !groupId) return res.status(400).json({ error: 'Group code or ID is required' });
 
-    const group = await Group.findOne({ where: { code: code.toUpperCase() } });
+    let group;
+    if (groupId) {
+      group = await Group.findByPk(groupId);
+    } else {
+      group = await Group.findOne({ where: { code: code.toUpperCase() } });
+    }
+
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    // Reset score to 0 for the new session
-    await User.update({ group_id: group.id, score: 0 }, { where: { id: userId } });
+    // Update user group_id (DO NOT reset score here)
+    await User.update({ group_id: group.id }, { where: { id: userId } });
 
-    logger.milestone(`User '${req.user.username}' joined Group: ${group.code}`);
+    // Find or Create GroupMember record (Persistent membership/stats)
+    const [member, created] = await GroupMember.findOrCreate({
+      where: { user_id: userId, group_id: group.id },
+      defaults: { role: req.user.role }
+    });
+
+    if (!created && member.role !== req.user.role) {
+      // Update role if it changed (e.g. guest became doctor)
+      member.role = req.user.role;
+      await member.save();
+    }
+
+    logger.milestone(`User '${req.user.username}' joined Group: ${group.code} (${created ? 'New Member' : 'Returning Member'})`);
 
     const io = getIo();
     if (io) {

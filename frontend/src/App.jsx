@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { LanguageProvider } from './contexts/LanguageContext';
 import Auth from './pages/Auth';
 import Group from './pages/Group';
 import AskQuestion from './pages/AskQuestion';
@@ -11,6 +12,7 @@ import AdminLogin from './pages/AdminLogin';
 
 function App() {
   return (
+    <LanguageProvider>
     <Router>
       <div className="min-h-screen flex flex-col pt-16">
         <Navbar />
@@ -30,6 +32,7 @@ function App() {
         </main>
       </div>
     </Router>
+    </LanguageProvider>
   );
 }
 

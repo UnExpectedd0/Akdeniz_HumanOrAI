@@ -19,4 +19,8 @@ router.post('/accept-question', doctorOnly, gameController.acceptQuestion);
 router.post('/answer', doctorOnly, gameController.doctorAnswer);
 router.get('/ai-status', gameController.getAiStatus);
 
+// Group management in game context
+router.get('/groups', gameController.getGroups);
+router.delete('/groups/:groupId', gameController.deleteGroup);
+
 module.exports = router;
