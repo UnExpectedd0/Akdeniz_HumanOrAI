@@ -7,6 +7,8 @@ google-credentials.json
 *.json
 !package.json
 !package-lock.json
+!frontend/src/locales/en.json
+!frontend/src/locales/tr.json
 
 # Build and Temp files
 dist/
