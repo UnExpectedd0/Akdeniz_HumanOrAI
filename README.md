@@ -1,6 +1,6 @@
 # 🧠 HumanOrAI — Can You Tell the Difference?
 
-> A real-time social deduction game built by **Akdeniz University** Computer Engineering students.
+> A real-time social deduction game built by **Akdeniz University** Medicine students.
 
 **🔗 Live Demo:** [https://akdeniz-humanorai.onrender.com/auth](https://akdeniz-humanorai.onrender.com/auth)
 
