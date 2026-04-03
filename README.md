@@ -117,27 +117,21 @@ npm install
 Create `backend/.env`:
 
 ```env
+PORT=5000
 JWT_SECRET=your_jwt_secret
-DOCTOR_SECRET_KEY=your_doctor_key
-ADMIN_SECRET_KEY=your_admin_key
+DOCTOR_SECRET=your_doctor_secret
 GEMINI_API_KEY=your_gemini_key
 GEMINI_API_KEY_2=your_second_gemini_key
-NODE_ENV=development
+ALLOWED_ORIGIN=http://localhost:5173
+
+# Admin
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_admin_password
 ```
 
-### Run
+#Simply click and run the **`Run-Project.bat`** file in the root directory. This will automatically build the frontend and start the backend server.
 
-```bash
-# Build the frontend first
-cd frontend
-npm run build
-
-# Start the backend (serves both API and frontend)
-cd ../backend
-npm start
-```
-
-App runs at **http://localhost:3000**
+App runs at **http://localhost:5000**
 
 ---
 
